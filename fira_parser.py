@@ -91,8 +91,8 @@ class FiraParser(object):
             self.convert_ssl_to_sim_coord(robot_state.pose,
                                           robot_state.v_pose)
         # print(state.robots_blue[0].v_pose)'''
-        print(data.frame.ball.x)
-        print(data.frame.ball.y)
+        #print(data.frame.ball.x)
+        #print(data.frame.ball.y)
         return data
 
     def _disconnect(self):

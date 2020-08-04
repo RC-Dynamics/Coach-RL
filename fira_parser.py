@@ -1,5 +1,5 @@
 import subprocess
-from firaclient import *
+from fira_client import *
 import math
 
 

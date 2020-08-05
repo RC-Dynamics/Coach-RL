@@ -8,7 +8,7 @@ class Stats:
         # width: 1.3, length: 1.5, goal_width: 0.4, goal_depth: 0.1
         field_width = data.field.width
         field_length = data.field.length
-        self.goal   = [field_length//2, field_width//2]
+        self.goal   = [field_length/2, field_width/2]
         self.control_radius = control_radius
         
         self.court_offset  = 0.2 #lembrar de conferir essa constante

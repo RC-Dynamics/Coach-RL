@@ -43,15 +43,15 @@ class CoachEnv(gym.Env):
         self.is_discrete = is_discrete
         if not self.is_discrete:
             self.observation_space = Box(
-                low=-1.0, high=1.0, shape=(qtde_steps, 29))
-            self.action_space = Discrete(3)
+                low=-1.0, high=1.0, shape=(qtde_steps, 29), dtype=np.float32)
+        self.action_space = Discrete(3)
 
     def start_agents(self):
         command_blue = BIN_PATH + 'VSSL_blue'
         command_yellow = BIN_PATH + 'VSSL_yellow'
         self.agent_blue_process = subprocess.Popen(command_blue)
         self.agent_yellow_process = subprocess.Popen(command_yellow)
-        time.sleep(3)
+        time.sleep(5)
         self.sw_conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sw_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sw_conn.setsockopt(
@@ -84,10 +84,10 @@ class CoachEnv(gym.Env):
     def _receive_state(self):
         data = self.fira.receive()
         self.history.update(data)
-        # if self.is_discrete:
-        #     state = self.history.disc_states
-        # else:
-        state = self.history.cont_states
+        if self.is_discrete:
+            state = self.history.disc_states
+        else:
+            state = self.history.cont_states
         return np.array(state)
 
     def reset(self):

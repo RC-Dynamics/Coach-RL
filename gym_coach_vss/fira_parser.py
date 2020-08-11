@@ -49,7 +49,6 @@ class FiraParser(object):
             command.append('-H')
         if self.fast_mode:
             command.append('--xlr8')
-        print(command)
         self.process = subprocess.Popen(command)
 
     def _stop_simulation(self):

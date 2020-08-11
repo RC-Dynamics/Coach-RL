@@ -1,6 +1,7 @@
-import subprocess
-from fira_client import *
 import math
+import subprocess
+
+from gym_coach_vss.fira_client import FiraClient
 
 
 class FiraParser(object):
@@ -11,11 +12,9 @@ class FiraParser(object):
         self.port = port
         self.conn = FiraClient(ip=ip, port=self.port)
 
-
-
-
     # Simulation methods
     # ----------------------------
+
     def start(self):
         self._connect()
         self.is_running = True
@@ -25,7 +24,6 @@ class FiraParser(object):
     def stop(self):
         self.is_running = False
         self._disconnect()
-        
 
     def reset(self):
         self.stop()
@@ -91,8 +89,8 @@ class FiraParser(object):
             self.convert_ssl_to_sim_coord(robot_state.pose,
                                           robot_state.v_pose)
         # print(state.robots_blue[0].v_pose)'''
-        #print(data.frame.ball.x)
-        #print(data.frame.ball.y)
+        # print(data.frame.ball.x)
+        # print(data.frame.ball.y)
         return data
 
     def _disconnect(self):
@@ -102,5 +100,3 @@ class FiraParser(object):
         self.com_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.address = (self.ip, self.port+1)
         self.conn.connect()
-
-

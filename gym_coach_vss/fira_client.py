@@ -1,6 +1,8 @@
-import socket
 import binascii
-import pb_fira.packet_pb2
+import socket
+
+from gym_coach_vss.pb_fira.packet_pb2 import Environment
+
 
 class FiraClient:
 
@@ -18,6 +20,7 @@ class FiraClient:
 
         self.ip = ip
         self.port = port
+        self.sock = None
 
     def connect(self):
         """Binds the client with ip and port and configure to UDP multicast."""
@@ -38,5 +41,5 @@ class FiraClient:
         """Receive package and decode."""
 
         data, _ = self.sock.recvfrom(1024)
-        decoded_data = pb_fira.packet_pb2.Environment().FromString(data)
+        decoded_data = Environment().FromString(data)
         return decoded_data

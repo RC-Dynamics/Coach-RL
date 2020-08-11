@@ -9,7 +9,7 @@ class Stats:
         # width: 1.3, length: 1.5, goal_width: 0.4, goal_depth: 0.1
         field_width = data.field.width
         field_length = data.field.length
-        self.goal = [field_length/2, field_width/2]
+        self.goal = np.array([field_length/2, field_width/2])
         self.control_radius = control_radius
 
         self.court_offset = 0.2  # lembrar de conferir essa constante
@@ -31,22 +31,22 @@ class Stats:
             sbd.append(np.sqrt((robot.x - ball.x) **
                                2 + (robot.y - ball.y)**2))  # y
 
-        DDB = np.sum(sbd[:self.n_player_per_team]) - \
+        ddb_score = np.sum(sbd[:self.n_player_per_team]) - \
             np.sum(sbd[self.n_player_per_team:])
-        return DDB
 
-    def get_bp(self, data):
+        return ddb_score
+
+    def get_ball_dist_to_goal(self, data):
         ball = data.frame.ball
-        dist = np.abs(ball.x - self.goal[0])
-        alfa = np.abs(ball.y - self.goal[1])
-        return dist, alfa
+        ball = np.array([ball.x, ball.y])
+        return np.linalg.norm(ball - self.goal)
 
     def get_param(self, history):
         phi_t = self.get_phi(history)
-        c_t = self.get_controll(history)
+        c_t = self.get_control(history)
         return phi_t, c_t
 
-    def get_controll(self, history):
+    def get_control(self, history):
         cm, co = 0, 0
 
         ball = history.getBalls()
@@ -94,16 +94,41 @@ class History:
             collections.deque(maxlen=MAX)] * num_robotsBlue
         self.listOfYellowRobots = [
             collections.deque(maxlen=MAX)] * num_robotsYellow
+        self.cont_states = collections.deque(maxlen=MAX)
+        self.disc_states = collections.deque(maxlen=MAX)
         self.num_robotsBlue = num_robotsBlue
         self.num_robotsYellow = num_robotsYellow
         self.num_insertions = 0
+        self.time = 0
+        self.data = None
+        self.start_lists()
+        self.stats = None
+
+    def start_lists(self):
+        for _ in range(self.MAX):
+            self.balls.append(None)
+            self.cont_states.append(None)
+            self.disc_states.append(None)
+            for i in range(self.num_robotsBlue):
+                self.listOfBlueRobots[i].append(None)
+            for i in range(self.num_robotsYellow):
+                self.listOfYellowRobots[i].append(None)
 
     def update(self, data):
-        self.balls.append(data.frame.ball)
-        for robot in data.frame.robots_blue:
+        self.data = data
+        self.stats = Stats(self.data)
+        cont_state = []
+        cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
+        self.balls.append(self.data.frame.ball)
+        for robot in self.data.frame.robots_blue:
+            cont_state += [robot.x, robot.y, robot.vx, robot.vy]
             self.listOfBlueRobots[robot.robot_id].append(robot)
-        for robot in data.frame.robots_yellow:
+        for robot in self.data.frame.robots_yellow:
+            cont_state += [robot.x, robot.y, robot.vx,
+                           robot.vy, robot.orientation]
             self.listOfYellowRobots[robot.robot_id].append(robot)
+        self.cont_states.append(cont_state)
+        self.time = self.data.time
 
         self.num_insertions += 1
 

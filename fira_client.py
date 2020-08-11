@@ -4,7 +4,7 @@ import pb_fira.packet_pb2
 
 class FiraClient:
 
-    def __init__(self, ip='127.0.0.1', port=10020):
+    def __init__(self, ip='224.5.23.2', port=10020):
         """
         Init SSLClient object.
         Extended description of function.

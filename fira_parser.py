@@ -1,15 +1,15 @@
 import subprocess
-from firaclient import *
+from fira_client import *
 import math
 
 
 class FiraParser(object):
 
-    def __init__(self, ip=None, port=10020):
+    def __init__(self, ip='224.5.23.2', port=10020):
         # -- Connection
         self.ip = ip
         self.port = port
-        self.conn = FiraClient(port=self.port)
+        self.conn = FiraClient(ip=ip, port=self.port)
 
 
 
@@ -91,8 +91,8 @@ class FiraParser(object):
             self.convert_ssl_to_sim_coord(robot_state.pose,
                                           robot_state.v_pose)
         # print(state.robots_blue[0].v_pose)'''
-        print(data.frame.ball.x)
-        print(data.frame.ball.y)
+        #print(data.frame.ball.x)
+        #print(data.frame.ball.y)
         return data
 
     def _disconnect(self):
@@ -100,7 +100,7 @@ class FiraParser(object):
 
     def _connect(self):
         self.com_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.address = ("127.0.0.1", self.port+1)
+        self.address = (self.ip, self.port+1)
         self.conn.connect()
 
 

@@ -2,7 +2,7 @@
     "editor.rulers": [
         80
     ],
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "python.linting.pycodestyleEnabled": true,
     "python.linting.pylintEnabled": true,
     "python.linting.pylintUseMinimalCheckers": false,

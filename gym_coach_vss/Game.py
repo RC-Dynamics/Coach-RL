@@ -128,7 +128,7 @@ class History:
                            robot.vy, robot.orientation]
             self.listOfYellowRobots[robot.robot_id].append(robot)
         self.cont_states.append(cont_state)
-        self.time = self.data.time
+        self.time = self.data.step
 
         self.num_insertions += 1
 

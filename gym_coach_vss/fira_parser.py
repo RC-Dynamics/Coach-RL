@@ -25,8 +25,8 @@ class FiraParser(object):
         if sim_path is not None:
             self.simulator_path = sim_path
         else:
-            home = '/home/' + os.getenv('user')
-            self.simulator_path = home + 'FIRASim/bin/FIRASim'
+            home = '/home/' + os.getenv('USER') 
+            self.simulator_path = home + '/FIRASim/bin/FIRASim'
 
     # Simulation methods
     # ----------------------------
@@ -49,6 +49,7 @@ class FiraParser(object):
             command.append('-H')
         if self.fast_mode:
             command.append('--xlr8')
+        print(command)
         self.process = subprocess.Popen(command)
 
     def _stop_simulation(self):

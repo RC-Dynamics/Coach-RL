@@ -5,7 +5,7 @@ import subprocess
 
 import gym
 import numpy as np
-from gym.spaces import Box
+from gym.spaces import Box, Discrete
 
 from gym_coach_vss.fira_parser import FiraParser
 from gym_coach_vss.Game import History, Stats
@@ -40,13 +40,21 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.goal_prev_blue = 0
         self.is_discrete = is_discrete
-        # self.observation_space = Box(low=-1.0, high=1.0, shape=())
+        if not self.is_discrete:
+            self.observation_space = Box(
+                low=-1.0, high=1.0, shape=(qtde_steps, 11))
+            self.action_space = Discrete(3)
 
     def start_agents(self):
-        command_blue = BIN_PATH + 'VSSL_blue'
-        command_yellow = BIN_PATH + 'VSSL_yellow'
+        # command_blue = BIN_PATH + 'VSSL_blue'
+        # command_yellow = BIN_PATH + 'VSSL_yellow'
+        command_blue = '/home/mateus/vss/vss-software/src/VSSL_blue'
+        command_yellow = '/home/mateus/vss/vss-software/src/VSSL_yellow'
         self.agent_blue_process = subprocess.Popen(command_blue)
+        print('-------------------foi azuulll-------')
         self.agent_yellow_process = subprocess.Popen(command_yellow)
+        print('------------------foi amarelooo-------')
+
         self.sw_conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sw_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sw_conn.setsockopt(
@@ -66,14 +74,15 @@ class CoachEnv(gym.Env):
         if self.fira is None:
             self.fira = FiraParser('224.5.23.2', port=self.fira_port,
                                    fast_mode=self.fast_mode,
-                                   render=self.render,
+                                   render=self.do_render,
                                    sim_path=self.sim_path)
         self.fira.start()
         self.start_agents()
 
     def stop(self):
-        self.stop_agents()
-        self.fira.stop()
+        if self.fira:
+            self.stop_agents()
+            self.fira.stop()
 
     def _receive_state(self):
         data = self.fira.receive()

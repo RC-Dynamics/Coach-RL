@@ -101,21 +101,28 @@ class History:
         self.num_insertions = 0
         self.time = 0
         self.data = None
-        self.start_lists()
         self.stats = None
+        self.first = True
 
-    def start_lists(self):
+    def start_lists(self, data):
         for _ in range(self.MAX):
-            self.balls.append(None)
-            self.cont_states.append(None)
-            self.disc_states.append(None)
-            for i in range(self.num_robotsBlue):
-                self.listOfBlueRobots[i].append(None)
-            for i in range(self.num_robotsYellow):
-                self.listOfYellowRobots[i].append(None)
+            self.balls.append(data.frame.ball)
+            cont_state = []
+            cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
+            for robot in self.data.frame.robots_blue:
+                cont_state += [robot.x, robot.y, robot.vx, robot.vy]
+                self.listOfBlueRobots[robot.robot_id].append(robot)
+            for robot in self.data.frame.robots_yellow:
+                cont_state += [robot.x, robot.y, robot.vx,
+                               robot.vy, robot.orientation]
+                self.listOfYellowRobots[robot.robot_id].append(robot)
+            self.cont_states.append(cont_state)
 
     def update(self, data):
         self.data = data
+        if self.first:
+            self.start_lists(self.data)
+            self.first = False
         self.stats = Stats(self.data)
         cont_state = []
         cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]

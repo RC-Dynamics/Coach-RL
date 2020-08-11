@@ -2,6 +2,7 @@ import os
 import socket
 import struct
 import subprocess
+import time
 
 import gym
 import numpy as np
@@ -42,19 +43,15 @@ class CoachEnv(gym.Env):
         self.is_discrete = is_discrete
         if not self.is_discrete:
             self.observation_space = Box(
-                low=-1.0, high=1.0, shape=(qtde_steps, 11))
+                low=-1.0, high=1.0, shape=(qtde_steps, 29))
             self.action_space = Discrete(3)
 
     def start_agents(self):
-        # command_blue = BIN_PATH + 'VSSL_blue'
-        # command_yellow = BIN_PATH + 'VSSL_yellow'
-        command_blue = '/home/mateus/vss/vss-software/src/VSSL_blue'
-        command_yellow = '/home/mateus/vss/vss-software/src/VSSL_yellow'
+        command_blue = BIN_PATH + 'VSSL_blue'
+        command_yellow = BIN_PATH + 'VSSL_yellow'
         self.agent_blue_process = subprocess.Popen(command_blue)
-        print('-------------------foi azuulll-------')
         self.agent_yellow_process = subprocess.Popen(command_yellow)
-        print('------------------foi amarelooo-------')
-
+        time.sleep(3)
         self.sw_conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sw_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sw_conn.setsockopt(
@@ -87,17 +84,17 @@ class CoachEnv(gym.Env):
     def _receive_state(self):
         data = self.fira.receive()
         self.history.update(data)
-        if self.is_discrete:
-            state = np.array(self.history.disc_states)
-        else:
-            state = np.array(self.history.cont_states)
-        return state
+        # if self.is_discrete:
+        #     state = self.history.disc_states
+        # else:
+        state = self.history.cont_states
+        return np.array(state)
 
     def reset(self):
         self.stop()
         self.start()
         state = self._receive_state()
-        return state
+        return np.array(state)
 
     def compute_rewards(self):
         diff_goal_blue = self.goal_prev_blue - self.history.data.goals_blue
@@ -123,3 +120,9 @@ class CoachEnv(gym.Env):
         reward = self.compute_rewards()
         done = True if self.history.time > self.time_limit else False
         return state, reward, done, self.history
+
+    def render(self, mode='human'):
+        pass
+
+    def close(self):
+        self.stop()

@@ -158,3 +158,4 @@ src/
 examples/Config
 *__pycache__
 *.pyc
+*wandb

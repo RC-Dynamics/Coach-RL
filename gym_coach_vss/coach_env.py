@@ -47,9 +47,15 @@ class CoachEnv(gym.Env):
         self.action_space = Discrete(18)
 
     def start_agents(self):
-        command_blue = [BIN_PATH + 'VSSL_blue']
+        if self.versus == 'determistic':
+            command_blue = [BIN_PATH + 'VSSL_blue']
+            command_blue.append('-H')
+        elif self.versus == 'deep':
+            command_blue = [BIN_PATH + 'VSSL_blue']
+            command_blue.append('-H')
+        else:
+            raise ValueError(f'No team with {self.versus} type')
         command_yellow = [BIN_PATH + 'VSSL_yellow']
-        command_blue.append('-H')
         command_yellow.append('-H')
         self.agent_blue_process = subprocess.Popen(command_blue)
         self.agent_yellow_process = subprocess.Popen(command_yellow)

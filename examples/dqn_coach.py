@@ -2,12 +2,16 @@ import collections
 import random
 
 import gym
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import wandb
 
 from gym_coach_vss import CoachEnv
+
+wandb.init(name="CoachRL-DQN", project="CoachRL")
 
 random.seed(42)
 # Hyperparameters
@@ -73,6 +77,7 @@ class Qnet(nn.Module):
 
 
 def train(q, q_target, memory, optimizer):
+    losses = list()
     for i in range(10):
         s, a, r, s_prime, done_mask = memory.sample(batch_size)
         s = s.to(device)
@@ -91,9 +96,11 @@ def train(q, q_target, memory, optimizer):
         target = r + gamma * max_q_prime * done_mask
         loss = F.smooth_l1_loss(q_a, target)
 
+        losses.append(loss.item())
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+    return losses
 
 
 def main():
@@ -106,7 +113,7 @@ def main():
         q_target.load_state_dict(q.state_dict())
         memory = ReplayBuffer()
 
-        print_interval = 20
+        print_interval = 1
         score = 0.0
         optimizer = optim.Adam(q.parameters(), lr=learning_rate)
 
@@ -125,12 +132,13 @@ def main():
                 score += r
 
             if memory.size() > batch_size:
-                train(q, q_target, memory, optimizer)
+                losses = train(q, q_target, memory, optimizer)
+                wandb.log({'Loss/DQN': np.mean(losses)})
 
             if n_epi % print_interval == 0 and n_epi != 0:
                 q_target.load_state_dict(q.state_dict())
-                print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(
-                    n_epi, score/print_interval, memory.size(), epsilon*100))
+                wandb.log({'rewards/total': score/print_interval,
+                           'Loss/epsilon': epsilon})
                 score = 0.0
         env.close()
     except Exception as e:

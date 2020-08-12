@@ -7,6 +7,6 @@ from .Game import *  # noqa
 from .pb_fira import *
 
 register(
-    id='coach_vss-v0',
+    id='CoachVss-v0',
     entry_point='gym_coach_vss.coach_env:CoachEnv'
 )

@@ -44,7 +44,7 @@ class CoachEnv(gym.Env):
         if not self.is_discrete:
             self.observation_space = Box(
                 low=-1.0, high=1.0, shape=(qtde_steps, 29), dtype=np.float32)
-        self.action_space = Discrete(3)
+        self.action_space = Discrete(15)
 
     def start_agents(self):
         command_blue = [BIN_PATH + 'VSSL_blue']
@@ -126,14 +126,15 @@ class CoachEnv(gym.Env):
         return reward
 
     def step(self, action):
+        reward = 0
         for _ in range(self.qtde_steps):
             out_str = struct.pack('i', int(action))
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             state = self._receive_state()
             done = True if self.history.time > self.time_limit else False
+            reward += self.compute_rewards()
             if done:
                 break
-        reward = self.compute_rewards()
         return state, reward, done, self.history
 
     def render(self, mode='human'):

@@ -121,8 +121,10 @@ class CoachEnv(gym.Env):
             out_str = struct.pack('i', int(action))
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             state = self._receive_state()
+            done = True if self.history.time > self.time_limit else False
+            if done:
+                break
         reward = self.compute_rewards()
-        done = True if self.history.time > self.time_limit else False
         return state, reward, done, self.history
 
     def render(self, mode='human'):

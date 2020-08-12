@@ -108,8 +108,6 @@ def main():
                 s = s_prime
 
                 score += r
-                if done:
-                    break
 
             if memory.size() > 2000:
                 train(q, q_target, memory, optimizer)

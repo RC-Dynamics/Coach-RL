@@ -113,33 +113,37 @@ def main():
         q_target.load_state_dict(q.state_dict())
         memory = ReplayBuffer()
 
-        print_interval = 1
+        update_interval = 10
+        train_interval = 100
         score = 0.0
         optimizer = optim.Adam(q.parameters(), lr=learning_rate)
-
-        for n_epi in range(10000):
-            epsilon = max(0.01, 0.08 - 0.01*(n_epi/200))
+        total_steps = 0
+        for n_epi in range(1000):
             s = env.reset()
             done = False
-
+            epi_steps = 0
+            score = 0.0
             while not done:
+                epsilon = max(0.01, 0.99 - 0.01*(total_steps/100))
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
                 memory.put((s, a, r, s_prime, done_mask))
                 s = s_prime
-
                 score += r
+                total_steps += 1
+                epi_steps += 1
+                if done:
+                    print('Reset')
 
             if memory.size() > batch_size:
                 losses = train(q, q_target, memory, optimizer)
                 wandb.log({'Loss/DQN': np.mean(losses)})
 
-            if n_epi % print_interval == 0 and n_epi != 0:
+            if n_epi % update_interval == 0 and n_epi > 0:
                 q_target.load_state_dict(q.state_dict())
-                wandb.log({'rewards/total': score/print_interval,
-                           'Loss/epsilon': epsilon})
-                score = 0.0
+            wandb.log({'rewards/total': score,
+                       'Loss/epsilon': epsilon})
         env.close()
     except Exception as e:
         env.close()

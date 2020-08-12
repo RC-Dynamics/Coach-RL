@@ -102,7 +102,6 @@ class History:
         self.time = 0
         self.data = None
         self.stats = None
-        self.first = True
 
     def start_lists(self, data):
         for _ in range(self.MAX):
@@ -118,11 +117,10 @@ class History:
                 self.listOfYellowRobots[robot.robot_id].append(robot)
             self.cont_states.append(cont_state)
 
-    def update(self, data):
+    def update(self, data, reset):
         self.data = data
-        if self.first:
+        if reset:
             self.start_lists(self.data)
-            self.first = False
         self.stats = Stats(self.data)
         cont_state = []
         cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]

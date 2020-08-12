@@ -76,23 +76,24 @@ class CoachEnv(gym.Env):
         self.sw_conn = None
 
     def start(self):
+        if self.agent_blue_process is None:
+            self.start_agents()
+            time.sleep(2)
         if self.fira is None:
             self.fira = FiraParser('224.5.23.2', port=self.fira_port,
                                    fast_mode=self.fast_mode,
                                    render=self.do_render,
                                    sim_path=self.sim_path)
         self.fira.start()
-        if self.agent_blue_process is None:
-            self.start_agents()
 
     def stop(self):
         if self.fira:
             self.stop_agents()
             self.fira.stop()
 
-    def _receive_state(self):
+    def _receive_state(self, reset=False):
         data = self.fira.receive()
-        self.history.update(data)
+        self.history.update(data, reset=reset)
         if self.is_discrete:
             state = self.history.disc_states
         else:
@@ -105,7 +106,7 @@ class CoachEnv(gym.Env):
         self.start()
         self.goal_prev_blue = 0
         self.goal_prev_yellow = 0
-        state = self._receive_state()
+        state = self._receive_state(reset=True)
         return np.array(state)
 
     def compute_rewards(self):

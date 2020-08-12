@@ -14,6 +14,8 @@ learning_rate = 0.0005
 gamma = 0.98
 buffer_limit = 50000
 batch_size = 32
+device = torch.device(
+    'cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
 class ReplayBuffer():
@@ -57,6 +59,7 @@ class Qnet(nn.Module):
         return x
 
     def sample_action(self, obs, epsilon):
+        obs = torch.from_numpy(obs).float().to(device)
         out = self.forward(obs)
         coin = random.random()
         if coin < epsilon:
@@ -68,6 +71,10 @@ class Qnet(nn.Module):
 def train(q, q_target, memory, optimizer):
     for i in range(10):
         s, a, r, s_prime, done_mask = memory.sample(batch_size)
+        s.to(device)
+        a.to(device)
+        r.to(device)
+        s_prime.to(device)
 
         q_out = q(s)
         q_a = q_out.gather(1, a)
@@ -83,9 +90,10 @@ def train(q, q_target, memory, optimizer):
 def main():
     try:
         env = CoachEnv()
-        n_inputs = env.observation_space.shape[0]*env.observation_space.shape[1]
-        q = Qnet(n_inputs, env.action_space.n)
-        q_target = Qnet(n_inputs, env.action_space.n)
+        n_inputs = env.observation_space.shape[0] * \
+            env.observation_space.shape[1]
+        q = Qnet(n_inputs, env.action_space.n).to(device)
+        q_target = Qnet(n_inputs, env.action_space.n).to(device)
         q_target.load_state_dict(q.state_dict())
         memory = ReplayBuffer()
 
@@ -100,7 +108,7 @@ def main():
             done = False
 
             while not done:
-                a = q.sample_action(torch.from_numpy(s).float(), epsilon)
+                a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
                 s_prime = s_prime.reshape(1, -1)

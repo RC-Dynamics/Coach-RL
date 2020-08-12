@@ -156,3 +156,5 @@ config.json
 gym_coach_vss/bin/*
 src/
 examples/Config
+*__pycache__
+*.pyc

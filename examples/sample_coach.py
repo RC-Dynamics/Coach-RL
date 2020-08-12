@@ -1,6 +1,6 @@
 from gym_coach_vss import CoachEnv
 
-env = CoachEnv()
+env = CoachEnv(render=True)
 
 try:
     for _ in range(10):

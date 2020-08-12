@@ -103,11 +103,15 @@ class CoachEnv(gym.Env):
 
         reward = 0
         if diff_goal_blue < 0:
+            print('********************GOAL BLUE*********************')
             self.goal_prev_blue = self.history.data.goals_blue
+            print(f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow')
             reward += diff_goal_blue*1000
 
         if diff_goal_yellow < 0:
+            print('********************GOAL YELLOW*******************')
             self.goal_prev_yellow = self.history.data.goals_yellow
+            print(f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow')
             reward += diff_goal_yellow*1000
 
         return reward

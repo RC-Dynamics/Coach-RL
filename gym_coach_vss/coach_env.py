@@ -18,7 +18,7 @@ BIN_PATH = '/'.join(os.path.abspath(__file__).split('/')
 class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
-                 sw_port=8084, qtde_steps=10, fast_mode=True,
+                 sw_port=8084, qtde_steps=100, fast_mode=True,
                  render=False, sim_path=None, is_discrete=False,
                  versus='determistic'):
 

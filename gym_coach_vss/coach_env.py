@@ -44,7 +44,7 @@ class CoachEnv(gym.Env):
         if not self.is_discrete:
             self.observation_space = Box(
                 low=-1.0, high=1.0, shape=(qtde_steps, 29), dtype=np.float32)
-        self.action_space = Discrete(15)
+        self.action_space = Discrete(18)
 
     def start_agents(self):
         command_blue = [BIN_PATH + 'VSSL_blue']

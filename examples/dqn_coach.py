@@ -114,7 +114,6 @@ def main():
         memory = ReplayBuffer()
 
         update_interval = 10
-        train_interval = 100
         score = 0.0
         optimizer = optim.Adam(q.parameters(), lr=learning_rate)
         total_steps = 0
@@ -124,7 +123,7 @@ def main():
             epi_steps = 0
             score = 0.0
             while not done:
-                epsilon = max(0.01, 0.99 - 0.01*(total_steps/100))
+                epsilon = max(0.01, 0.99 - 0.01*(total_steps/1000))
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0

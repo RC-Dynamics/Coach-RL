@@ -64,8 +64,8 @@ class CoachEnv(gym.Env):
             raise ValueError(f'No team with {self.versus} type')
         command_yellow = [BIN_PATH + 'VSSL_yellow']
         command_yellow.append('-H')
-        # self.agent_blue_process = subprocess.Popen(command_blue)
-        # self.agent_yellow_process = subprocess.Popen(command_yellow)
+        self.agent_blue_process = subprocess.Popen(command_blue)
+        self.agent_yellow_process = subprocess.Popen(command_yellow)
         time.sleep(5)
         self.sw_conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sw_conn.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -75,10 +75,10 @@ class CoachEnv(gym.Env):
         self.sw_conn.bind(('0.0.0.0', 8084))
 
     def stop_agents(self):
-        # self.agent_blue_process.terminate()
-        # self.agent_blue_process.wait()
-        # self.agent_yellow_process.terminate()
-        # self.agent_yellow_process.wait()
+        self.agent_blue_process.terminate()
+        self.agent_blue_process.wait()
+        self.agent_yellow_process.terminate()
+        self.agent_yellow_process.wait()
         self.sw_conn.close()
         self.sw_conn = None
 

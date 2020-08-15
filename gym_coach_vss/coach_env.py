@@ -23,7 +23,7 @@ w_grad_ball_potential = (0.08, 1)
 class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
-                 sw_port=8084, qtde_steps=100, fast_mode=True,
+                 sw_port=8084, qtde_steps=5000, update_interval=1000, fast_mode=True,
                  render=False, sim_path=None, is_discrete=False,
                  versus='determistic'):
 
@@ -47,9 +47,11 @@ class CoachEnv(gym.Env):
         self.goal_prev_blue = 0
         self.is_discrete = is_discrete
         self.prev_time = 0.0
+        self.update_interval = update_interval
+        self.window_size = (qtde_steps//update_interval) 
         if not self.is_discrete:
             self.observation_space = Box(
-                low=-1.0, high=1.0, shape=(qtde_steps, 29), dtype=np.float32)
+                low=-1.0, high=1.0, shape=(self.window_size, 29), dtype=np.float32)
         self.action_space = Discrete(27)
 
 
@@ -105,7 +107,11 @@ class CoachEnv(gym.Env):
             state = self.history.disc_states
         else:
             state = self.history.cont_states
-        return np.array(state)
+
+        state = np.array(state)
+        state = state[self.update_interval-1::self.update_interval]
+
+        return state
 
     def reset(self):
         if self.fira:

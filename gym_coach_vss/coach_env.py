@@ -19,11 +19,11 @@ BIN_PATH = '/'.join(os.path.abspath(__file__).split('/')
 w_grad_ball_potential = (0.08, 1)
 
 
-
 class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
-                 sw_port=8084, qtde_steps=5000, update_interval=1000, fast_mode=True,
+                 sw_port=8084, qtde_steps=60,
+                 update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=False,
                  versus='determistic'):
 
@@ -47,13 +47,14 @@ class CoachEnv(gym.Env):
         self.goal_prev_blue = 0
         self.is_discrete = is_discrete
         self.prev_time = 0.0
+        self.done = False
         self.update_interval = update_interval
-        self.window_size = (qtde_steps//update_interval) 
+        self.window_size = (qtde_steps//update_interval)
         if not self.is_discrete:
-            self.observation_space = Box(
-                low=-1.0, high=1.0, shape=(self.window_size, 29), dtype=np.float32)
+            self.observation_space = Box(low=-1.0, high=1.0,
+                                         shape=(self.window_size, 29),
+                                         dtype=np.float32)
         self.action_space = Discrete(27)
-
 
     def start_agents(self):
         if self.versus == 'determistic':
@@ -61,6 +62,9 @@ class CoachEnv(gym.Env):
             command_blue.append('-H')
         elif self.versus == 'deep':
             command_blue = [BIN_PATH + 'VSSL_blue']
+            command_blue.append('-H')
+        elif self.versus == 'goalie':
+            command_blue = [BIN_PATH + 'VSSL_blue_goalie']
             command_blue.append('-H')
         else:
             raise ValueError(f'No team with {self.versus} type')
@@ -139,23 +143,29 @@ class CoachEnv(gym.Env):
         else:
             return value
 
-
     def compute_rewards(self):
         diff_goal_blue = self.goal_prev_blue - self.history.data.goals_blue
-        diff_goal_yellow = self.history.data.goals_yellow - self.goal_prev_yellow
+        diff_goal_yellow = self.history.data.goals_yellow -\
+            self.goal_prev_yellow
 
         ball_potential = self.ball_potential()
         prev_ball_potential = self.ball_potential((-2))
 
-        dt = self.history.time - self.prev_time
-        self.prev_time = self.history.time
+        if self.prev_time < self.history.time:
+            dt = self.history.time - self.prev_time
+            self.prev_time = self.history.time
+        else:
+            self.history.time = self.prev_time = 0.0
+            dt = 0
+            self.done = True
 
-        if self.history.balls is not []:
-            grad_ball_potential = self.bound((ball_potential - prev_ball_potential) * 4000 / dt, -1.0,
-                                       1.0)  # (-1,1)
+        if self.history.balls and dt > 0:
+            grad_ball_potential = self.bound(
+                (ball_potential - prev_ball_potential) * 4000 / dt,
+                -1.0, 1.0)  # (-1,1)
         else:
             grad_ball_potential = 0.0
-        
+
         reward = 0.0
         if diff_goal_blue < 0.0:
             print('********************GOAL BLUE*********************')
@@ -178,16 +188,16 @@ class CoachEnv(gym.Env):
         return reward
 
     def step(self, action):
+        self.done = False
         reward = 0
         for _ in range(self.qtde_steps):
             out_str = struct.pack('i', int(action))
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             state = self._receive_state()
-            done = True if self.history.time > self.time_limit else False
             reward += self.compute_rewards()
-            if done:
+            if self.done:
                 break
-        return state, reward, done, self.history
+        return state, reward, self.done, self.history
 
     def render(self, mode='human'):
         pass

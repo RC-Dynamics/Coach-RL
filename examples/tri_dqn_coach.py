@@ -153,7 +153,7 @@ def main():
             a_daughter = -1
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
-                    math.exp(-1. * total_steps / 1000)
+                    math.exp(-1. * total_steps / 30000)
                 state_daughter = concat(s, a_head, env.window_size)
                 state_son = concat(state_daughter,
                                    a_daughter, env.window_size)
@@ -194,7 +194,7 @@ def main():
                 if done:
                     print('Reset')
 
-            if memory_head.size() > 30000:
+            if memory_head.size() > batch_size:
                 losses = train(q_head, q_head_target,
                                memory_head, optimizer_head)
                 losses_daughter = train(q_daughter, q_daughter_target,

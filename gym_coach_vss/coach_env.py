@@ -173,7 +173,7 @@ class CoachEnv(gym.Env):
             print(
                 f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
             )
-            reward += diff_goal_blue*1000.0
+            reward += diff_goal_blue*100.0
 
         if diff_goal_yellow > 0.0:
             print('********************GOAL YELLOW*******************')
@@ -181,7 +181,7 @@ class CoachEnv(gym.Env):
             print(
                 f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
             )
-            reward += diff_goal_yellow*1000.0
+            reward += diff_goal_yellow*100.0
 
         reward += grad_ball_potential * w_grad_ball_potential[0]
 

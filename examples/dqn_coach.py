@@ -123,7 +123,8 @@ def main():
             epi_steps = 0
             score = 0.0
             while not done:
-                epsilon = max(0.01, 0.99 - 0.01*(total_steps/1000))
+                epsilon = 0.01 + (0.99 - 0.01) * \
+                    np.exp(-1. * total_steps / 1000)
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
@@ -135,7 +136,7 @@ def main():
                 if done:
                     print('Reset')
 
-            if memory.size() > batch_size:
+            if memory.size() > 30000:
                 losses = train(q, q_target, memory, optimizer)
                 wandb.log({'Loss/DQN': np.mean(losses)})
 

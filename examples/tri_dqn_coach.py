@@ -1,3 +1,4 @@
+import argparse
 import collections
 import math
 import random
@@ -138,7 +139,7 @@ def concat(x, y, qtde_steps=2):
     return dog.numpy()
 
 
-def main():
+def main(load_model=False, test=False):
     action_list = ["000", "001", "002", "010", "011", "012", "020", "021",
                    "022", "100", "101", "102", "110", "111", "112", "120",
                    "121", "122", "200", "201", "202", "210", "211", "212",
@@ -161,6 +162,20 @@ def main():
         q_son_target = Qnet(n_inputs+2*env.window_size, 3).to(device)
         q_son_target.load_state_dict(q_son.state_dict())
 
+        if load_model or test:
+            head_dict = torch.load('models/DQN_HEAD.model')
+            daughter_dict = torch.load('models/DQN_DAUGHTER.model')
+            son_dict = torch.load('models/DQN_SON.model')
+
+            q_head.load_state_dict(head_dict)
+            q_head_target.load_state_dict(head_dict)
+
+            q_daughter.load_state_dict(daughter_dict)
+            q_daughter_target.load_state_dict(daughter_dict)
+
+            q_son.load_state_dict(son_dict)
+            q_son_target.load_state_dict(son_dict)
+
         update_interval = 10
         score = 0.0
         optimizer_head = optim.Adam(q_head.parameters(), lr=learning_rate)
@@ -179,6 +194,7 @@ def main():
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
                     math.exp(-1. * total_steps / 30000)
+                epsilon = epsilon if not test else 0.01
                 state_daughter = concat(s, a_head, env.window_size)
                 state_son = concat(state_daughter,
                                    a_daughter, env.window_size)
@@ -228,6 +244,11 @@ def main():
                 q_head_target.load_state_dict(q_head.state_dict())
                 q_daughter_target.load_state_dict(q_daughter.state_dict())
                 q_son_target.load_state_dict(q_son.state_dict())
+                torch.save(q_head.state_dict(), 'models/DQN_HEAD.model')
+                torch.save(q_daughter.state_dict(),
+                           'models/DQN_DAUGHTER.model')
+                torch.save(q_son.state_dict(), 'models/DQN_SON.model')
+
             wandb.log({'Rewards/total': score,
                        'Loss/epsilon': epsilon})
         env.close()
@@ -237,4 +258,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    PARSER = argparse.ArgumentParser(description='Predicts your time series')
+    PARSER.add_argument('--test', default=False,
+                        action='store_true', help="Test mode")
+    PARSER.add_argument('--load', default=False,
+                        action='store_true',
+                        help="Load models from examples/models/")
+    ARGS = PARSER.parse_args()
+
+    main(load_model=ARGS.load, test=ARGS.test)

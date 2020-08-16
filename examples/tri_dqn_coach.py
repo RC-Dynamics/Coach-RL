@@ -1,6 +1,7 @@
 import argparse
 import collections
 import math
+import os
 import random
 import re
 
@@ -265,5 +266,7 @@ if __name__ == '__main__':
                         action='store_true',
                         help="Load models from examples/models/")
     ARGS = PARSER.parse_args()
+    if not os.path.exists('./models'):
+        os.makedirs('models')
 
     main(load_model=ARGS.load, test=ARGS.test)

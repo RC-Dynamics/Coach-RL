@@ -105,7 +105,7 @@ def train(q, q_target, memory, optimizer):
 
 def main():
     try:
-        env = CoachEnv(render=True, qtde_steps=5000, update_interval=1000)
+        env = CoachEnv()
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q = Qnet(n_inputs, env.action_space.n).to(device)

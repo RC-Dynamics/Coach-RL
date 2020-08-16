@@ -26,23 +26,48 @@ device = torch.device(
 
 
 class ReplayBuffer():
-    def __init__(self):
+    def __init__(self, window_size=4):
         self.buffer = collections.deque(maxlen=buffer_limit)
+        self.buffer_head = collections.deque(maxlen=buffer_limit)
+        self.buffer_daughter = collections.deque(maxlen=buffer_limit)
+        self.buffer_son = collections.deque(maxlen=buffer_limit)
+        self.window_size = window_size
 
-    def put(self, transition):
+    def put(self, transition, action_head, action_daughter, action_son):
         self.buffer.append(transition)
+        self.buffer_head.append(action_head)
+        self.buffer_daughter.append(action_daughter)
+        self.buffer_son.append(action_son)
 
-    def sample(self, n):
-        mini_batch = random.sample(self.buffer, n)
+    def sample(self, n, net_type=0):
+        mini_batch = np.random.choice(range(1, len(self.buffer)), n)
         s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
 
-        for transition in mini_batch:
-            s, a, r, s_prime, done_mask = transition
-            s_lst.append(s)
-            a_lst.append([a])
-            r_lst.append([r])
-            s_prime_lst.append(s_prime)
+        for idx in mini_batch:
+            s, r, s_prime, done_mask = self.buffer[idx]
             done_mask_lst.append([done_mask])
+            r_lst.append([r[net_type]])
+
+            s_daughter = concat(s, self.buffer_head[idx-1], self.window_size)
+            s_prime_daughter = concat(s_prime, self.buffer_head[idx],
+                                      self.window_size)
+
+            s_son = concat(s_daughter, self.buffer_daughter[idx-1],
+                           self.window_size)
+            s_prime_son = concat(s_prime_daughter, self.buffer_daughter[idx],
+                                 self.window_size)
+            if net_type == 0:
+                s_lst.append(s)
+                s_prime_lst.append(s_prime)
+                a_lst.append([self.buffer_head[idx]])
+            elif net_type == 1:
+                s_lst.append(s_daughter)
+                s_prime_lst.append(s_prime_daughter)
+                a_lst.append([self.buffer_daughter[idx]])
+            else:
+                s_lst.append(s_son)
+                s_prime_lst.append(s_prime_son)
+                a_lst.append([self.buffer_son[idx]])
 
         return torch.tensor(s_lst, dtype=torch.float), torch.tensor(a_lst), \
             torch.tensor(r_lst), torch.tensor(s_prime_lst, dtype=torch.float), \
@@ -78,10 +103,11 @@ class Qnet(nn.Module):
             return out.argmax().item()
 
 
-def train(q, q_target, memory, optimizer):
+def train(q, q_target, memory, optimizer, net_type):
     losses = list()
     for i in range(10):
-        s, a, r, s_prime, done_mask = memory.sample(batch_size)
+        s, a, r, s_prime, done_mask = memory.sample(batch_size,
+                                                    net_type=net_type)
         s = s.to(device)
         a = a.to(device)
         r = r.to(device)
@@ -119,22 +145,21 @@ def main():
                    "220", "221", "222"]
     try:
         env = CoachEnv()
+        memory = ReplayBuffer(window_size=env.window_size)
+
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q_head = Qnet(n_inputs, 3).to(device)
         q_head_target = Qnet(n_inputs, 3).to(device)
         q_head_target.load_state_dict(q_head.state_dict())
-        memory_head = ReplayBuffer()
 
         q_daughter = Qnet(n_inputs+env.window_size, 3).to(device)
         q_daughter_target = Qnet(n_inputs+env.window_size, 3).to(device)
         q_daughter_target.load_state_dict(q_daughter.state_dict())
-        memory_daughter = ReplayBuffer()
 
         q_son = Qnet(n_inputs+2*env.window_size, 3).to(device)
         q_son_target = Qnet(n_inputs+2*env.window_size, 3).to(device)
         q_son_target.load_state_dict(q_son.state_dict())
-        memory_son = ReplayBuffer()
 
         update_interval = 10
         score = 0.0
@@ -175,18 +200,12 @@ def main():
                         if rbt_i == 0:
                             continue
                         rews[i-1] = -5*rbt_i
+                rews = [r, r+rews[0], r+rews[1]]
 
                 done_mask = 0.0 if done else 1.0
-                memory_head.put((s, a_head, r, s_prime, done_mask))
+                memory.put((s, rews, s_prime, done_mask),
+                           a_head, a_daughter, a_son)
 
-                s_prime_daughter = concat(s_prime, a_head, env.window_size)
-                memory_daughter.put((state_daughter, a_daughter,
-                                     r+rews[0], s_prime_daughter, done_mask))
-
-                s_prime_son = concat(
-                    s_prime_daughter, a_daughter, env.window_size)
-                memory_son.put((state_son, a_son, r+rews[1],
-                                s_prime_son, done_mask))
                 s = s_prime
                 score += r
                 total_steps += 1
@@ -194,13 +213,13 @@ def main():
                 if done:
                     print('Reset')
 
-            if memory_head.size() > batch_size:
+            if memory.size() > batch_size:
                 losses = train(q_head, q_head_target,
-                               memory_head, optimizer_head)
+                               memory, optimizer_head, net_type=0)
                 losses_daughter = train(q_daughter, q_daughter_target,
-                                        memory_daughter, optimizer_daughter)
+                                        memory, optimizer_daughter, net_type=1)
                 losses_son = train(q_son, q_son_target,
-                                   memory_son, optimizer_son)
+                                   memory, optimizer_son, net_type=2)
                 wandb.log({'Loss/Head': np.mean(losses)})
                 wandb.log({'Loss/Daughter': np.mean(losses_daughter)})
                 wandb.log({'Loss/Son': np.mean(losses_son)})
@@ -209,7 +228,7 @@ def main():
                 q_head_target.load_state_dict(q_head.state_dict())
                 q_daughter_target.load_state_dict(q_daughter.state_dict())
                 q_son_target.load_state_dict(q_son.state_dict())
-            wandb.log({'rewards/total': score,
+            wandb.log({'Rewards/total': score,
                        'Loss/epsilon': epsilon})
         env.close()
     except Exception as e:

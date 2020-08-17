@@ -23,8 +23,7 @@ learning_rate = 0.0005
 gamma = 0.98
 buffer_limit = 50000
 batch_size = 32
-device = torch.device(
-    'cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cuda')
 
 
 class ReplayBuffer():
@@ -194,7 +193,7 @@ def main(load_model=False, test=False):
             a_daughter = -1
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
-                    math.exp(-1. * total_steps / 30000)
+                    np.exp(-1. * total_steps / 30000)
                 epsilon = epsilon if not test else 0.01
                 state_daughter = concat(s, a_head, env.window_size)
                 state_son = concat(state_daughter,
@@ -230,18 +229,19 @@ def main(load_model=False, test=False):
                 if done:
                     print('Reset')
 
-            if memory.size() > batch_size:
+            if memory.size() > batch_size and not test:
                 losses = train(q_head, q_head_target,
                                memory, optimizer_head, net_type=0)
                 losses_daughter = train(q_daughter, q_daughter_target,
                                         memory, optimizer_daughter, net_type=1)
                 losses_son = train(q_son, q_son_target,
                                    memory, optimizer_son, net_type=2)
-                wandb.log({'Loss/Head': np.mean(losses)})
-                wandb.log({'Loss/Daughter': np.mean(losses_daughter)})
-                wandb.log({'Loss/Son': np.mean(losses_son)})
+                wandb.log({'Loss/Head': np.mean(losses)}, step=n_epi)
+                wandb.log(
+                    {'Loss/Daughter': np.mean(losses_daughter)}, step=n_epi)
+                wandb.log({'Loss/Son': np.mean(losses_son)}, step=n_epi)
 
-            if n_epi % update_interval == 0 and n_epi > 0:
+            if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_head_target.load_state_dict(q_head.state_dict())
                 q_daughter_target.load_state_dict(q_daughter.state_dict())
                 q_son_target.load_state_dict(q_son.state_dict())
@@ -249,9 +249,9 @@ def main(load_model=False, test=False):
                 torch.save(q_daughter.state_dict(),
                            'models/DQN_DAUGHTER.model')
                 torch.save(q_son.state_dict(), 'models/DQN_SON.model')
-
-            wandb.log({'Rewards/total': score,
-                       'Loss/epsilon': epsilon})
+            if not test:
+                wandb.log({'Rewards/total': score,
+                           'Loss/epsilon': epsilon}, step=n_epi)
         env.close()
     except Exception as e:
         env.close()

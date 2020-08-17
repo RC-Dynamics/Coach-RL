@@ -1,4 +1,6 @@
+import argparse
 import collections
+import os
 import random
 
 import gym
@@ -7,8 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import wandb
 
+import wandb
 from gym_coach_vss import CoachEnv
 
 wandb.init(name="CoachRL-DQN", project="CoachRL")
@@ -103,7 +105,7 @@ def train(q, q_target, memory, optimizer):
     return losses
 
 
-def main():
+def main(load_model=False, test=False):
     try:
         env = CoachEnv()
         n_inputs = env.observation_space.shape[0] * \
@@ -112,6 +114,11 @@ def main():
         q_target = Qnet(n_inputs, env.action_space.n).to(device)
         q_target.load_state_dict(q.state_dict())
         memory = ReplayBuffer()
+
+        if load_model or test:
+            q_dict = torch.load('models/DQN.model')
+            q.load_state_dict(q_dict)
+            q_target.load_state_dict(q_dict)
 
         update_interval = 10
         score = 0.0
@@ -124,7 +131,8 @@ def main():
             score = 0.0
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
-                    np.exp(-1. * total_steps / 1000)
+                    np.exp(-1. * total_steps / 30000)
+                epsilon = epsilon if not test else 0.01
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
@@ -136,11 +144,12 @@ def main():
                 if done:
                     print('Reset')
 
-            if memory.size() > 30000:
+            if memory.size() > batch_size and not test:
                 losses = train(q, q_target, memory, optimizer)
                 wandb.log({'Loss/DQN': np.mean(losses)})
+                torch.save(q.state_dict(), 'models/DQN.model')
 
-            if n_epi % update_interval == 0 and n_epi > 0:
+            if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())
             wandb.log({'rewards/total': score,
                        'Loss/epsilon': epsilon})
@@ -151,4 +160,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    PARSER = argparse.ArgumentParser(description='Predicts your time series')
+    PARSER.add_argument('--test', default=False,
+                        action='store_true', help="Test mode")
+    PARSER.add_argument('--load', default=False,
+                        action='store_true',
+                        help="Load models from examples/models/")
+    ARGS = PARSER.parse_args()
+    if not os.path.exists('./models'):
+        os.makedirs('models')
+
+    main(load_model=ARGS.load, test=ARGS.test)

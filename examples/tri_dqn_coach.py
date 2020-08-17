@@ -47,7 +47,7 @@ class ReplayBuffer():
         for idx in mini_batch:
             s, r, s_prime, done_mask = self.buffer[idx]
             done_mask_lst.append([done_mask])
-            r_lst.append([r[net_type]])
+            r_lst.append([r])
 
             s_daughter = concat(s, self.buffer_head[idx-1], self.window_size)
             s_prime_daughter = concat(s_prime, self.buffer_head[idx],
@@ -207,19 +207,8 @@ def main(load_model=False, test=False):
                 a = action_list.index(a_str)
                 s_prime, r, done, info = env.step(a)
 
-                more_than_one_goalie = [m.start(0)
-                                        for m in re.finditer('2', a_str)]
-                rews = [0, 0]
-                if len(more_than_one_goalie) > 1:
-                    iters = 1
-                    for i, rbt_i in enumerate(more_than_one_goalie):
-                        if rbt_i == 0:
-                            continue
-                        rews[i-1] = -5*rbt_i
-                rews = [r, r+rews[0], r+rews[1]]
-
                 done_mask = 0.0 if done else 1.0
-                memory.put((s, rews, s_prime, done_mask),
+                memory.put((s, r, s_prime, done_mask),
                            a_head, a_daughter, a_son)
 
                 s = s_prime

@@ -44,7 +44,7 @@ class FiraParser(object):
         self._stop_simulation()
 
     def _start_simulation(self):
-        command = [self.simulator_path]
+        command = [self.simulator_path, '--atkfault']
         if not self.render:
             command.append('-H')
         if self.fast_mode:

@@ -87,9 +87,11 @@ class CoachEnv(gym.Env):
         self.agent_yellow_process.wait()
         self.sw_conn.close()
         self.sw_conn = None
+        self.agent_yellow_process = None
+        self.agent_blue_process = None
 
     def start(self):
-        if self.agent_blue_process is None:
+        if self.agent_yellow_process is None:
             self.start_agents()
             time.sleep(2)
         if self.fira is None:
@@ -118,11 +120,12 @@ class CoachEnv(gym.Env):
         return state
 
     def reset(self):
-        if self.fira:
-            self.fira.stop()
+        if self.fira and self.agent_yellow_process:
+            self.stop()
         self.start()
         self.goal_prev_blue = 0
         self.goal_prev_yellow = 0
+        self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
         return np.array(state)
 

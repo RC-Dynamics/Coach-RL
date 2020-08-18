@@ -116,7 +116,6 @@ class CoachEnv(gym.Env):
 
         state = np.array(state)
         state = state[self.update_interval-1::self.update_interval]
-
         return state
 
     def reset(self):
@@ -227,9 +226,10 @@ class CoachEnv(gym.Env):
     def step(self, action):
         self.done = False
         reward = 0
+        out_str = struct.pack('i', int(action))
+        self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
+        
         for _ in range(self.qtde_steps):
-            out_str = struct.pack('i', int(action))
-            self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             state = self._receive_state()
             reward += self.compute_rewards()
             if self.done:

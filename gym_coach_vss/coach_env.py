@@ -126,7 +126,7 @@ class CoachEnv(gym.Env):
         self.goal_prev_blue = 0
         self.goal_prev_yellow = 0
         self.history = History(self.qtde_steps)
-        state = self._receive_state(reset=True)
+        state = self._receive_state(action=21, reset=True)
         return np.array(state)
 
     def ball_potential(self, step=-1):

@@ -103,7 +103,7 @@ class History:
         self.data = None
         self.stats = None
 
-    def start_lists(self, data):
+    def start_lists(self, data, default_action=21):
         for _ in range(self.MAX):
             self.balls.append(data.frame.ball)
             cont_state = []
@@ -115,12 +115,13 @@ class History:
                 cont_state += [robot.x, robot.y, robot.vx,
                                robot.vy, robot.orientation]
                 self.listOfYellowRobots[robot.robot_id].append(robot)
+            cont_state += [0, default_action/27.0]    
             self.cont_states.append(cont_state)
 
     def update(self, data, action, reset):
         self.data = data
         if reset:
-            self.start_lists(self.data)
+            self.start_lists(self.data, action)
         self.stats = Stats(self.data)
         cont_state = []
         cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
@@ -134,7 +135,7 @@ class History:
             self.listOfYellowRobots[robot.robot_id].append(robot)
 
         cont_state += [(data.goals_yellow - data.goals_blue) / 10, action/27.0]
-        print(cont_state[-2:])
+        #print(cont_state[-2:])
         self.cont_states.append(cont_state)
         self.time = self.data.step
 

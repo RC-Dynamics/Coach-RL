@@ -52,7 +52,7 @@ class CoachEnv(gym.Env):
         self.window_size = (qtde_steps//update_interval)
         if not self.is_discrete:
             self.observation_space = Box(low=-1.0, high=1.0,
-                                         shape=(self.window_size, 29),
+                                         shape=(self.window_size, 30),
                                          dtype=np.float32)
         self.action_space = Discrete(27)
 

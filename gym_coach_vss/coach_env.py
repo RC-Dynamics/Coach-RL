@@ -52,7 +52,7 @@ class CoachEnv(gym.Env):
         self.window_size = (qtde_steps//update_interval)
         if not self.is_discrete:
             self.observation_space = Box(low=-1.0, high=1.0,
-                                         shape=(self.window_size, 29),
+                                         shape=(self.window_size, 31),
                                          dtype=np.float32)
         self.action_space = Discrete(27)
 
@@ -106,9 +106,9 @@ class CoachEnv(gym.Env):
             self.stop_agents()
             self.fira.stop()
 
-    def _receive_state(self, reset=False):
+    def _receive_state(self, action, reset=False):
         data = self.fira.receive()
-        self.history.update(data, reset=reset)
+        self.history.update(data, action, reset=reset)
         if self.is_discrete:
             state = self.history.disc_states
         else:
@@ -227,10 +227,10 @@ class CoachEnv(gym.Env):
     def step(self, action):
         self.done = False
         reward = 0
+        out_str = struct.pack('i', int(action))
+        self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
         for _ in range(self.qtde_steps):
-            out_str = struct.pack('i', int(action))
-            self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
-            state = self._receive_state()
+            state = self._receive_state(int(action))
             reward += self.compute_rewards()
             if self.done:
                 break

@@ -117,7 +117,7 @@ class History:
                 self.listOfYellowRobots[robot.robot_id].append(robot)
             self.cont_states.append(cont_state)
 
-    def update(self, data, reset):
+    def update(self, data, action, reset):
         self.data = data
         if reset:
             self.start_lists(self.data)
@@ -132,6 +132,9 @@ class History:
             cont_state += [robot.x, robot.y, robot.vx,
                            robot.vy, robot.orientation]
             self.listOfYellowRobots[robot.robot_id].append(robot)
+
+        cont_state += [(data.goals_yellow - data.goals_blue) / 10, action/27.0]
+        print(cont_state[-2:])
         self.cont_states.append(cont_state)
         self.time = self.data.step
 

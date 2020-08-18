@@ -52,7 +52,7 @@ class CoachEnv(gym.Env):
         self.window_size = (qtde_steps//update_interval)
         if not self.is_discrete:
             self.observation_space = Box(low=-1.0, high=1.0,
-                                         shape=(self.window_size, 29),
+                                         shape=(self.window_size, 30),
                                          dtype=np.float32)
         self.action_space = Discrete(27)
 
@@ -116,7 +116,6 @@ class CoachEnv(gym.Env):
 
         state = np.array(state)
         state = state[self.update_interval-1::self.update_interval]
-
         return state
 
     def reset(self):
@@ -227,9 +226,10 @@ class CoachEnv(gym.Env):
     def step(self, action):
         self.done = False
         reward = 0
+        out_str = struct.pack('i', int(action))
+        self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
+        
         for _ in range(self.qtde_steps):
-            out_str = struct.pack('i', int(action))
-            self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             state = self._receive_state()
             reward += self.compute_rewards()
             if self.done:

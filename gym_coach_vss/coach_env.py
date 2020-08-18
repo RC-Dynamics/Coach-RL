@@ -146,9 +146,9 @@ class CoachEnv(gym.Env):
         else:
             return value
 
-    def is_penalty(self):
-        penalty = False
-        bx, by = self.history.balls[0].x, self.history.balls[0].y
+    def is_atk_fault(self):
+        atk_fault = False
+        bx, by = self.history.balls[-1].x, self.history.balls[-1].y
         if bx < -0.6 and abs(by) < 0.35:
             one_in_pen_area = False
             for i in range(self.history.num_robotsYellow):
@@ -156,14 +156,14 @@ class CoachEnv(gym.Env):
                 rx, ry = robot.x, robot.y
                 if rx < -0.6 and abs(ry) < 0.35:
                     if (one_in_pen_area):
-                        penalty = True
+                        atk_fault = True
                     else:
                         one_in_pen_area = True
-        return penalty
+        return atk_fault
 
-    def is_atk_fault(self):
-        atk_fault = False
-        bx, by = self.history.balls[0].x, self.history.balls[0].y
+    def is_penalty(self):
+        penalty = False
+        bx, by = self.history.balls[-1].x, self.history.balls[-1].y
         if bx > 0.6 and abs(by) < 0.35:
             one_in_pen_area = False
             for i in range(self.history.num_robotsYellow):
@@ -171,10 +171,10 @@ class CoachEnv(gym.Env):
                 rx, ry = robot.x, robot.y
                 if rx > 0.6 and abs(ry) < 0.35:
                     if (one_in_pen_area):
-                        atk_fault = True
+                        penalty = True
                     else:
                         one_in_pen_area = True
-        return atk_fault
+        return penalty
 
     def compute_rewards(self):
         diff_goal_blue = self.goal_prev_blue - self.history.data.goals_blue

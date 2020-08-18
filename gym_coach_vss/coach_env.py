@@ -147,11 +147,10 @@ class CoachEnv(gym.Env):
 
     def is_atk_fault(self):
         atk_fault = False
-        bx, by = self.history.balls[-1].x, self.history.balls[-1].y
+        bx, by = self.history.data.frame.ball.x, self.history.data.frame.ball.y
         if bx < -0.6 and abs(by) < 0.35:
             one_in_pen_area = False
-            for i in range(self.history.num_robotsYellow):
-                robot = self.history.listOfYellowRobots[i][-1]
+            for robot in self.history.data.frame.robots_yellow:
                 rx, ry = robot.x, robot.y
                 if rx < -0.6 and abs(ry) < 0.35:
                     if (one_in_pen_area):
@@ -162,11 +161,10 @@ class CoachEnv(gym.Env):
 
     def is_penalty(self):
         penalty = False
-        bx, by = self.history.balls[-1].x, self.history.balls[-1].y
+        bx, by = self.history.data.frame.ball.x, self.history.data.frame.ball.y
         if bx > 0.6 and abs(by) < 0.35:
             one_in_pen_area = False
-            for i in range(self.history.num_robotsYellow):
-                robot = self.history.listOfYellowRobots[i][-1]
+            for robot in self.history.data.frame.robots_yellow:
                 rx, ry = robot.x, robot.y
                 if rx > 0.6 and abs(ry) < 0.35:
                     if (one_in_pen_area):
@@ -228,7 +226,6 @@ class CoachEnv(gym.Env):
         reward = 0
         out_str = struct.pack('i', int(action))
         self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
-        
         for _ in range(self.qtde_steps):
             state = self._receive_state()
             reward += self.compute_rewards()

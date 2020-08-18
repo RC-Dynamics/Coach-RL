@@ -151,9 +151,9 @@ def main(load_model=False, test=False):
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())
-            wandb.log({'rewards/total': score,
+            wandb.log({'Rewards/total': score,
                        'Loss/epsilon': epsilon,
-                       'rewards/goal_diff': env.goal_prev_yellow -
+                       'Rewards/goal_diff': env.goal_prev_yellow -
                        env.goal_prev_blue})
         env.close()
     except Exception as e:

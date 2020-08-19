@@ -145,7 +145,7 @@ def main(load_model=False, test=False):
                    "121", "122", "200", "201", "202", "210", "211", "212",
                    "220", "221", "222"]
     try:
-        env = CoachEnv()
+        env = gym.make('CoachVss-v0')
         memory = ReplayBuffer(window_size=env.window_size)
 
         n_inputs = env.observation_space.shape[0] * \
@@ -225,10 +225,10 @@ def main(load_model=False, test=False):
                                         memory, optimizer_daughter, net_type=1)
                 losses_son = train(q_son, q_son_target,
                                    memory, optimizer_son, net_type=2)
-                wandb.log({'Loss/Head': np.mean(losses)}, step=n_epi)
-                wandb.log(
-                    {'Loss/Daughter': np.mean(losses_daughter)}, step=n_epi)
-                wandb.log({'Loss/Son': np.mean(losses_son)}, step=n_epi)
+                wandb.log({'Loss/Head': np.mean(losses)}, step=total_steps)
+                wandb.log({'Loss/Daughter': np.mean(losses_daughter)},
+                          step=total_steps)
+                wandb.log({'Loss/Son': np.mean(losses_son)}, step=total_steps)
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_head_target.load_state_dict(q_head.state_dict())
@@ -240,7 +240,9 @@ def main(load_model=False, test=False):
                 torch.save(q_son.state_dict(), 'models/DQN_SON.model')
             if not test:
                 wandb.log({'Rewards/total': score,
-                           'Loss/epsilon': epsilon}, step=n_epi)
+                           'Loss/epsilon': epsilon,
+                           'Rewards/goal_diff': env.goal_prev_yellow -
+                           env.goal_prev_blue}, step=total_steps)
         env.close()
     except Exception as e:
         env.close()

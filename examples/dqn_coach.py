@@ -107,7 +107,7 @@ def train(q, q_target, memory, optimizer):
 
 def main(load_model=False, test=False):
     try:
-        env = CoachEnv()
+        env = gym.make('CoachVss-v0')
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q = Qnet(n_inputs, env.action_space.n).to(device)
@@ -146,7 +146,8 @@ def main(load_model=False, test=False):
 
             if memory.size() > batch_size and not test:
                 losses = train(q, q_target, memory, optimizer)
-                wandb.log({'Loss/DQN': np.mean(losses)})
+                wandb.log({'Loss/DQN': np.mean(losses)},
+                          step=total_steps, commit=False)
                 torch.save(q.state_dict(), 'models/DQN.model')
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
@@ -154,7 +155,7 @@ def main(load_model=False, test=False):
             wandb.log({'Rewards/total': score,
                        'Loss/epsilon': epsilon,
                        'Rewards/goal_diff': env.goal_prev_yellow -
-                       env.goal_prev_blue})
+                       env.goal_prev_blue}, step=total_steps)
         env.close()
     except Exception as e:
         env.close()

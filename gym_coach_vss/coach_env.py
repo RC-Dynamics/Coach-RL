@@ -11,6 +11,7 @@ from gym.spaces import Box, Discrete
 
 from gym_coach_vss.fira_parser import FiraParser
 from gym_coach_vss.Game import History, Stats
+import random
 
 BIN_PATH = '/'.join(os.path.abspath(__file__).split('/')
                     [:-1]) + '/bin/'
@@ -126,6 +127,9 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
+		options = [0,18,21]
+		out_str = struct.pack('i', int(random.choice(options)))
+        self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         return np.array(state)
 
     def ball_potential(self, step=-1):

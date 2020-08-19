@@ -127,8 +127,8 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
-		options = [0,18,21]
-		out_str = struct.pack('i', int(random.choice(options)))
+        options = [0,18,21]
+        out_str = struct.pack('i', int(random.choice(options)))
         self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         return np.array(state)
 

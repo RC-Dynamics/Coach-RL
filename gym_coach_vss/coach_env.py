@@ -198,8 +198,10 @@ class CoachEnv(gym.Env):
 
         reward = 0.0
 
-        if self.is_penalty() or self.is_atk_fault():
-            reward -= 100
+        if self.is_penalty():
+            reward -= 35
+        if self.is_atk_fault():
+            reward -= 10
 
         if diff_goal_blue < 0.0:
             print('********************GOAL BLUE*********************')

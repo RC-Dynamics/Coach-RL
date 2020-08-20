@@ -159,7 +159,7 @@ def main(load_model=False, test=False):
                            'Loss/epsilon': epsilon,
                            'Rewards/goal_diff': goal_diff,
                            'Rewards/num_penalties': env.num_penalties,
-                           'Rewards/num_atk_faults': env.num_penalties
+                           'Rewards/num_atk_faults': env.num_atk_faults
                            }, step=total_steps)
         env.close()
     except Exception as e:

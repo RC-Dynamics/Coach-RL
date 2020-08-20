@@ -13,7 +13,6 @@ import torch.optim as optim
 import wandb
 from gym_coach_vss import CoachEnv
 
-wandb.init(name="CoachRL-DQN", project="CoachRL")
 
 random.seed(42)
 # Hyperparameters
@@ -53,11 +52,11 @@ class ReplayBuffer():
 
 
 class Qnet(nn.Module):
-    def __init__(self, num_imput, actions):
+    def __init__(self, num_input, actions):
         super(Qnet, self).__init__()
         self.actions = actions
-        self.num_imput = num_imput
-        self.fc1 = nn.Linear(num_imput, 128)
+        self.num_input = num_input
+        self.fc1 = nn.Linear(num_input, 128)
         self.fc2 = nn.Linear(128, 128)
         self.fc3 = nn.Linear(128, actions)
 
@@ -69,7 +68,7 @@ class Qnet(nn.Module):
 
     def sample_action(self, obs, epsilon):
         obs = torch.from_numpy(obs).float().to(device)
-        obs = obs.view(1, self.num_imput)
+        obs = obs.view(1, self.num_input)
         out = self.forward(obs)
         coin = random.random()
         if coin < epsilon:
@@ -107,6 +106,8 @@ def train(q, q_target, memory, optimizer):
 
 def main(load_model=False, test=False):
     try:
+        if not test:
+            wandb.init(name="CoachRL-DQN", project="CoachRL")
         env = gym.make('CoachVss-v0')
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
@@ -121,7 +122,6 @@ def main(load_model=False, test=False):
             q_target.load_state_dict(q_dict)
 
         update_interval = 10
-        score = 0.0
         optimizer = optim.Adam(q.parameters(), lr=learning_rate)
         total_steps = 0
         for n_epi in range(1000):
@@ -152,10 +152,15 @@ def main(load_model=False, test=False):
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())
-            wandb.log({'Rewards/total': score,
-                       'Loss/epsilon': epsilon,
-                       'Rewards/goal_diff': env.goal_prev_yellow -
-                       env.goal_prev_blue}, step=total_steps)
+
+            if not test:
+                goal_diff = env.goal_prev_yellow - env.goal_prev_blue
+                wandb.log({'Rewards/total': score,
+                           'Loss/epsilon': epsilon,
+                           'Rewards/goal_diff': goal_diff,
+                           'Rewards/num_penalties': env.num_penalties,
+                           'Rewards/num_atk_faults': env.num_penalties
+                           }, step=total_steps)
         env.close()
     except Exception as e:
         env.close()

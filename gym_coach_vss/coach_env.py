@@ -25,7 +25,7 @@ class CoachEnv(gym.Env):
     def __init__(self, addr='224.5.23.2', fira_port=10020,
                  sw_port=8084, qtde_steps=60,
                  update_interval=15, fast_mode=True,
-                 render=False, sim_path=None, is_discrete=False,
+                 render=False, sim_path=None, is_discrete=True,
                  versus='determistic'):
 
         super(CoachEnv, self).__init__()
@@ -48,14 +48,21 @@ class CoachEnv(gym.Env):
         self.goal_prev_blue = 0
         self.is_discrete = is_discrete
         self.prev_time = 0.0
+        self.num_penalties = 0
+        self.num_atk_faults = 0
+        self.full_atk_time = 0
         self.done = False
         self.update_interval = update_interval
         self.window_size = (qtde_steps//update_interval)
-        if not self.is_discrete:
-            self.observation_space = Box(low=-1.0, high=1.0,
-                                         shape=(self.window_size, 30),
-                                         dtype=np.float32)
-        self.action_space = Discrete(27)
+        self.observation_space = Box(low=-1.0, high=1.0,
+                                     shape=(self.window_size, 30),
+                                     dtype=np.float32)
+        if self.is_discrete:
+            self.action_space = Discrete(27)
+        else:
+            self.action_space = Box(low=-1.0, high=1.0,
+                                    shape=(1,),
+                                    dtype=np.float32)
 
     def start_agents(self):
         if self.versus == 'determistic':
@@ -125,10 +132,17 @@ class CoachEnv(gym.Env):
         self.start()
         self.goal_prev_blue = 0
         self.goal_prev_yellow = 0
+        self.num_atk_faults = 0
+        self.num_penalties = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
-        options = [0,18,21]
-        out_str = struct.pack('i', int(random.choice(options)))
+        options = [0, 18]
+        if self.full_atk_time % 10 == 0:
+            option = 21
+        else:
+            option = int(random.choice(options))
+        self.full_atk_time += 1
+        out_str = struct.pack('i', option)
         self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         return np.array(state)
 
@@ -203,8 +217,10 @@ class CoachEnv(gym.Env):
         reward = 0.0
 
         if self.is_penalty():
+            self.num_penalties += 1
             reward -= 35
         if self.is_atk_fault():
+            self.num_atk_faults += 1
             reward -= 10
 
         if diff_goal_blue < 0.0:
@@ -244,3 +260,9 @@ class CoachEnv(gym.Env):
 
     def close(self):
         self.stop()
+
+
+class CoachEnvContinuous(CoachEnv):
+
+    def __init__(self):
+        super(CoachEnvContinuous, self).__init__(is_discrete=False)

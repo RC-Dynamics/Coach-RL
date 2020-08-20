@@ -10,3 +10,9 @@ register(
     id='CoachVss-v0',
     entry_point='gym_coach_vss.coach_env:CoachEnv'
 )
+
+
+register(
+    id='CoachVssContinuous-v0',
+    entry_point='gym_coach_vss.coach_env:CoachEnvContinuous'
+)

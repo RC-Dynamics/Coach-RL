@@ -117,11 +117,7 @@ class CoachEnv(gym.Env):
     def _receive_state(self, reset=False):
         data = self.fira.receive()
         self.history.update(data, reset=reset)
-        if self.is_discrete:
-            state = self.history.disc_states
-        else:
-            state = self.history.cont_states
-
+        state = self.history.cont_states
         state = np.array(state)
         state = state[self.update_interval-1::self.update_interval]
         return state

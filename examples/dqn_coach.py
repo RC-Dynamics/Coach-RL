@@ -20,8 +20,7 @@ learning_rate = 0.0005
 gamma = 0.98
 buffer_limit = 50000
 batch_size = 32
-device = torch.device(
-    'cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class ReplayBuffer():

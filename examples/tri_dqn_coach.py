@@ -79,11 +79,11 @@ class ReplayBuffer():
 
 
 class Qnet(nn.Module):
-    def __init__(self, num_imput, actions):
+    def __init__(self, num_input, actions):
         super(Qnet, self).__init__()
         self.actions = actions
-        self.num_imput = num_imput
-        self.fc1 = nn.Linear(num_imput, 128)
+        self.num_input = num_input
+        self.fc1 = nn.Linear(num_input, 128)
         self.fc2 = nn.Linear(128, 128)
         self.fc3 = nn.Linear(128, actions)
 
@@ -95,7 +95,7 @@ class Qnet(nn.Module):
 
     def sample_action(self, obs, epsilon):
         obs = torch.from_numpy(obs).float().to(device)
-        obs = obs.view(1, self.num_imput)
+        obs = obs.view(1, self.num_input)
         out = self.forward(obs)
         coin = random.random()
         if coin < epsilon:

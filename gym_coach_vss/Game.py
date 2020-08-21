@@ -57,7 +57,7 @@ class Stats:
             cm += sum([self.is_controling(blue[i], ball[i]) for blue in blues])
             co += sum([self.is_controling(yellow[i], ball[i])
                        for yellow in yellows])
-        c_t = cm / (cm + co + self.eps)
+        c_t = (cm - co) / (len(ball))
 
         return c_t
 
@@ -70,7 +70,7 @@ class Stats:
             bm += self.ball_in_area(ball=ball_state, use_right_goal=True)
             bo += self.ball_in_area(ball=ball_state, use_right_goal=False)
 
-        phi_t = bm / (bm + bo + self.eps)
+        phi_t = (bm-bo) / len(ball)
 
         return phi_t
 
@@ -106,35 +106,50 @@ class History:
     def start_lists(self, data):
         for _ in range(self.MAX):
             self.balls.append(data.frame.ball)
-            cont_state = []
-            cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
-            for robot in self.data.frame.robots_blue:
-                cont_state += [robot.x, robot.y, robot.vx, robot.vy]
+            #cont_state = []
+            #cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
+            
+            for robot in data.frame.robots_blue:
+                #cont_state += [robot.x, robot.y, robot.vx, robot.vy]
                 self.listOfBlueRobots[robot.robot_id].append(robot)
-            for robot in self.data.frame.robots_yellow:
-                cont_state += [robot.x, robot.y, robot.vx,
-                               robot.vy, robot.orientation]
+            for robot in data.frame.robots_yellow:
+                #cont_state += [robot.x, robot.y, robot.vx,
+                #               robot.vy, robot.orientation]
                 self.listOfYellowRobots[robot.robot_id].append(robot)
-            cont_state += [0]
+
+            self.stats = Stats(data)
+            phi_t, c_t = self.stats.get_param(self)
+        
+            ddb       = self.stats.get_DDB(data)
+            dist_ball = self.stats.get_ball_dist_to_goal(data)
+            diff_goal = (data.goals_yellow - data.goals_blue) / 10
+
+            cont_state = [ddb, dist_ball, diff_goal, phi_t, c_t]
             self.cont_states.append(cont_state)
 
     def update(self, data, reset):
         self.data = data
         if reset:
             self.start_lists(self.data)
+        
         self.stats = Stats(self.data)
-        cont_state = []
-        cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
+
         self.balls.append(self.data.frame.ball)
         for robot in self.data.frame.robots_blue:
-            cont_state += [robot.x, robot.y, robot.vx, robot.vy]
             self.listOfBlueRobots[robot.robot_id].append(robot)
         for robot in self.data.frame.robots_yellow:
-            cont_state += [robot.x, robot.y, robot.vx,
-                           robot.vy, robot.orientation]
             self.listOfYellowRobots[robot.robot_id].append(robot)
-        cont_state += [(data.goals_yellow - data.goals_blue) / 10]
 
+
+        phi_t, c_t = self.stats.get_param(self)
+        
+        ddb       = self.stats.get_DDB(self.data)
+        dist_ball = self.stats.get_ball_dist_to_goal(self.data)
+        diff_goal = (data.goals_yellow - data.goals_blue) / 10
+        #print(ddb, dist_ball, diff_goal, phi_t, c_t)
+
+        cont_state = [ddb, dist_ball, diff_goal, phi_t, c_t]
+        
         self.cont_states.append(cont_state)
         self.time = self.data.step
 

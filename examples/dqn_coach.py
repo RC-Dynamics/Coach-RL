@@ -106,7 +106,7 @@ def train(q, q_target, memory, optimizer):
 def main(load_model=False, test=False):
     try:
         if not test:
-            wandb.init(name="CoachRL-DQN", project="CoachRL")
+            wandb.init(name="CoachRL-DQN-globalinput", project="CoachRL")
         env = gym.make('CoachVss-v0')
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]

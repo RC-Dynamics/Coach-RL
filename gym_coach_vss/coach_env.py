@@ -24,7 +24,7 @@ class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
                  sw_port=8084, qtde_steps=60,
-                 update_interval=15, fast_mode=True,
+                 update_interval=10, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
                  versus='determistic'):
 
@@ -55,7 +55,7 @@ class CoachEnv(gym.Env):
         self.update_interval = update_interval
         self.window_size = (qtde_steps//update_interval)
         self.observation_space = Box(low=-1.0, high=1.0,
-                                     shape=(self.window_size, 30),
+                                     shape=(self.window_size, 5),
                                      dtype=np.float32)
         if self.is_discrete:
             self.action_space = Discrete(27)

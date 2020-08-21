@@ -214,7 +214,8 @@ def main(load_model=False, test=False):
             epi_step = 0
             while not done:  # maximum length of episode is 200 for Pendulum-v0
                 a = actor.get_action(s)
-                a = ou_noise.get_action(a, epi_step)[0]
+                if not test:
+                    a = ou_noise.get_action(a, epi_step)[0]
                 action = find_nearest(act_space, a)
                 s_prime, r, done, _ = env.step(action)
                 done_mask = 0.0 if done else 1.0

@@ -132,21 +132,21 @@ class CoachEnv(gym.Env):
         self.num_penalties = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
-        options = [0, 18]
+        options = [18, 21]
         if self.full_atk_time % 10 == 0:
-            option = 21
+            option = 0
         else:
             option = int(random.choice(options))
         self.full_atk_time += 1
         out_str = struct.pack('i', option)
+        self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         if option == 0:
-            option = 'GZA'
+            option = 'AAA'
         elif option == 18:
             option = 'GAA'
         else:
-            option = 'AAA'
+            option = 'GZA'
         print(f'************* Against {option} *************')
-        self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         return np.array(state)
 
     def ball_potential(self, step=-1):

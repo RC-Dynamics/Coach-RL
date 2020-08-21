@@ -139,6 +139,13 @@ class CoachEnv(gym.Env):
             option = int(random.choice(options))
         self.full_atk_time += 1
         out_str = struct.pack('i', option)
+        if option == 0:
+            option = 'GZA'
+        elif option == 18:
+            option = 'GAA'
+        else:
+            option = 'AAA'
+        print(f'************* Against {option} *************')
         self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         return np.array(state)
 

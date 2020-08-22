@@ -74,6 +74,9 @@ class CoachEnv(gym.Env):
         elif self.versus == 'goalie':
             command_blue = [BIN_PATH + 'VSSL_blue_goalie']
             command_blue.append('-H')
+        elif self.versus == 'threezones':
+            command_blue = [BIN_PATH + 'VSSL_blue_threezones']
+            command_blue.append('-H')
         else:
             raise ValueError(f'No team with {self.versus} type')
         command_yellow = [BIN_PATH + 'VSSL_yellow']
@@ -132,6 +135,8 @@ class CoachEnv(gym.Env):
         self.num_penalties = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
+        
+        if self.versus == 'determistic':
         options = [18, 21]
         if self.full_atk_time % 10 == 0:
             option = 0
@@ -146,7 +151,11 @@ class CoachEnv(gym.Env):
             option = 'GAA'
         else:
             option = 'GZA'
+                
+        else:
+            option = self.versus
         print(f'************* Against {option} *************')
+
         return np.array(state)
 
     def ball_potential(self, step=-1):

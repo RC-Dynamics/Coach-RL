@@ -26,7 +26,7 @@ class CoachEnv(gym.Env):
                  sw_port=8084, qtde_steps=60,
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
-                 versus='determistic'):
+                 versus='determistic', logger_path='log.txt', yellow_name='yellow'):
 
         super(CoachEnv, self).__init__()
         self.addr = addr
@@ -52,6 +52,8 @@ class CoachEnv(gym.Env):
         self.num_atk_faults = 0
         self.full_atk_time = 0
         self.done = False
+        self.logger_path = logger_path
+        self.yellow_name = yellow_name
         self.update_interval = update_interval
         self.window_size = (qtde_steps//update_interval)
         self.observation_space = Box(low=-1.0, high=1.0,
@@ -91,6 +93,18 @@ class CoachEnv(gym.Env):
         self.sw_conn.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         self.sw_conn.bind(('0.0.0.0', 8084))
 
+    def check_agents(self):
+        r_blue = self.agent_blue_process.poll() == None
+        r_yellow = self.agent_yellow_process.poll() == None
+
+        if not r_blue:
+            print("Warring: Blue team Down", self.versus)
+        if not r_yellow:
+            print("Warring: Yellow Team Down")
+
+        return r_blue and r_yellow
+
+
     def stop_agents(self):
         self.agent_blue_process.terminate()
         self.agent_blue_process.wait()
@@ -125,9 +139,22 @@ class CoachEnv(gym.Env):
         state = state[self.update_interval-1::self.update_interval]
         return state
 
+    def write_log(self, is_first=False):                
+        with open(self.logger_path, 'a') as log:
+            if is_first:
+                log.write(f"{self.yellow_name}, {self.versus}\n")
+            else:
+                log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}\n")
+                
+
     def reset(self):
-        if self.fira and self.agent_yellow_process:
+        is_first = not (self.fira and self.agent_yellow_process)
+        self.write_log(is_first)
+
+        if not is_first:
+            print( f"Coach {self.goal_prev_yellow} x {self.goal_prev_blue} {self.versus}")
             self.stop()
+
         self.start()
         self.goal_prev_blue = 0
         self.goal_prev_yellow = 0
@@ -137,20 +164,20 @@ class CoachEnv(gym.Env):
         state = self._receive_state(reset=True)
         
         if self.versus == 'determistic':
-        options = [18, 21]
-        if self.full_atk_time % 10 == 0:
-            option = 0
-        else:
-            option = int(random.choice(options))
-        self.full_atk_time += 1
-        out_str = struct.pack('i', option)
-        self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
-        if option == 0:
-            option = 'AAA'
-        elif option == 18:
-            option = 'GAA'
-        else:
-            option = 'GZA'
+            options = [18, 21]
+            if self.full_atk_time % 10 == 0:
+                option = 0
+            else:
+                option = int(random.choice(options))
+            self.full_atk_time += 1
+            out_str = struct.pack('i', option)
+            self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
+            if option == 0:
+                option = 'AAA'
+            elif option == 18:
+                option = 'GAA'
+            else:
+                option = 'GZA'
                 
         else:
             option = self.versus
@@ -263,6 +290,9 @@ class CoachEnv(gym.Env):
         for _ in range(self.qtde_steps):
             state = self._receive_state()
             reward += self.compute_rewards()
+            if not self.check_agents():
+                self.done = True
+
             if self.done:
                 break
         return state, reward, self.done, self.history

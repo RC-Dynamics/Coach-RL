@@ -141,10 +141,15 @@ class CoachEnv(gym.Env):
 
     def write_log(self, is_first=False):                
         with open(self.logger_path, 'a') as log:
+            from datetime import datetime
+            now = datetime.now()
+
+
             if is_first:
-                log.write(f"{self.yellow_name}, {self.versus}\n")
+                log.write(f"{self.yellow_name}, {self.versus}, {now}\n")
             else:
-                log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}\n")
+                log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}, {self.check_agents()}\n")
+                
                 
 
     def reset(self):

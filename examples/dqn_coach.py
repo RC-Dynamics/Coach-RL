@@ -116,7 +116,8 @@ def main(load_model=False, test=False):
         memory = ReplayBuffer()
 
         if load_model or test:
-            q_dict = torch.load('models/DQN.model')
+            #torch.load('my_file.pt', map_location=lambda storage, location: 'cpu')
+            q_dict = torch.load('models/DQN_best.model', map_location=lambda storage, loc: storage)
             q.load_state_dict(q_dict)
             q_target.load_state_dict(q_dict)
 

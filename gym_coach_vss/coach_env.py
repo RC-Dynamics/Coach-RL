@@ -175,6 +175,7 @@ class CoachEnv(gym.Env):
             else:
                 option = int(random.choice(options))
             self.full_atk_time += 1
+            option = 18
             out_str = struct.pack('i', option)
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
             if option == 0:

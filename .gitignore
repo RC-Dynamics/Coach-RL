@@ -160,3 +160,5 @@ examples/Config
 *.pyc
 *wandb
 *.model
+*.optim
+*log.txt

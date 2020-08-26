@@ -107,28 +107,32 @@ def main(load_model=False, test=False):
     try:
         if not test:
             wandb.init(name="CoachRL-DQN", project="CoachRL")
-        env = gym.make('CoachVss-v0', render=True)
+        env = gym.make('CoachVss-v0', render=False)
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q = Qnet(n_inputs, env.action_space.n).to(device)
         q_target = Qnet(n_inputs, env.action_space.n).to(device)
         q_target.load_state_dict(q.state_dict())
         memory = ReplayBuffer()
+        optimizer = optim.Adam(q.parameters(), lr=learning_rate)
 
         if load_model or test:
-            #torch.load('my_file.pt', map_location=lambda storage, location: 'cpu')
-            q_dict = torch.load('models/DQN_best.model', map_location=lambda storage, loc: storage)
+            q_dict = torch.load('models/DQN_best.model',
+                                map_location=lambda storage, loc: storage)
             q.load_state_dict(q_dict)
             q_target.load_state_dict(q_dict)
+            if not test:
+                optim_dict = torch.load(f'models/DQN.optim')
+                optimizer.load_state_dict(optim_dict)
 
         update_interval = 10
-        optimizer = optim.Adam(q.parameters(), lr=learning_rate)
         total_steps = 0
         for n_epi in range(2000):
             s = env.reset()
             done = False
             epi_steps = 0
             score = 0.0
+            episode = list()
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
                     np.exp(-1. * total_steps / 30000)
@@ -136,7 +140,7 @@ def main(load_model=False, test=False):
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
-                memory.put((s, a, r, s_prime, done_mask))
+                episode.append((s, a, r, s_prime, done_mask))
                 s = s_prime
                 score += r
                 total_steps += 1
@@ -144,20 +148,25 @@ def main(load_model=False, test=False):
                 if done:
                     print('Reset')
 
+            if not env.broken:
+                for exp in episode:
+                    memory.put(exp)
+
             if memory.size() > batch_size and not test:
                 losses = train(q, q_target, memory, optimizer)
                 wandb.log({'Loss/DQN': np.mean(losses)},
                           step=total_steps, commit=False)
                 torch.save(q.state_dict(), 'models/DQN_best.model')
 
-            if n_epi % 100 ==0:
+            if n_epi % 100 == 0:
                 torch.save(q.state_dict(), f'models/DQN_{n_epi:06d}.model')
-
+                torch.save(optimizer.state_dict(),
+                           f'models/DQN_{n_epi:06d}.optim')
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())
 
-            if not test:
+            if not test and not env.broken:
                 goal_diff = env.goal_prev_yellow - env.goal_prev_blue
                 wandb.log({'Rewards/total': score,
                            'Loss/epsilon': epsilon,

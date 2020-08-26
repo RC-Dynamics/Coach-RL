@@ -26,7 +26,8 @@ class CoachEnv(gym.Env):
                  sw_port=8084, steps_per_update=1, qtde_steps=60,
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
-                 versus='determistic', logger_path='log.txt', yellow_name='yellow'):
+                 versus='determistic', logger_path='log.txt',
+                 yellow_name='yellow'):
 
         super(CoachEnv, self).__init__()
         np.random.seed(2020)
@@ -56,6 +57,7 @@ class CoachEnv(gym.Env):
         self.counter_yellow = 0
         self.update_ratio_blue   = 60 * 60
         self.done = False
+        self.broken = False
         self.logger_path = logger_path
         self.yellow_name = yellow_name
         self.update_interval = update_interval
@@ -98,8 +100,8 @@ class CoachEnv(gym.Env):
         self.sw_conn.bind(('0.0.0.0', 8084))
 
     def check_agents(self):
-        r_blue = self.agent_blue_process.poll() == None
-        r_yellow = self.agent_yellow_process.poll() == None
+        r_blue = self.agent_blue_process.poll() is None
+        r_yellow = self.agent_yellow_process.poll() is None
 
         if not r_blue:
             print("Warring: Blue team Down", self.versus)
@@ -107,7 +109,6 @@ class CoachEnv(gym.Env):
             print("Warring: Yellow Team Down")
 
         return r_blue and r_yellow
-
 
     def stop_agents(self):
         self.agent_blue_process.terminate()
@@ -144,18 +145,17 @@ class CoachEnv(gym.Env):
 
         return state
 
-    def write_log(self, is_first=False):                
+    def write_log(self, is_first=False):
         with open(self.logger_path, 'a') as log:
             from datetime import datetime
             now = datetime.now()
 
-
             if is_first:
                 log.write(f"{self.yellow_name}, {self.versus}, {now}\n")
             else:
-                log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}, {self.check_agents()}\n")
-                
-                
+                log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}\
+                    , {self.check_agents()}\n")
+
     def change_random_blue(self):
         if self.versus == 'determistic':
             options = [0, 18, 21]
@@ -169,17 +169,19 @@ class CoachEnv(gym.Env):
                 option = 'GAA'
             else:
                 option = 'GZA'
-                
+
         else:
             option = self.versus
         print(f'************* Against {option} *************')
 
     def reset(self):
+        self.broken = False
         is_first = not (self.fira and self.agent_yellow_process)
         self.write_log(is_first)
 
         if not is_first:
-            print( f"Coach {self.goal_prev_yellow} x {self.goal_prev_blue} {self.versus}")
+            print(f"Coach {self.goal_prev_yellow}\
+                 x {self.goal_prev_blue} {self.versus}")
             self.stop()
 
         self.start()
@@ -190,7 +192,6 @@ class CoachEnv(gym.Env):
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
         self.change_random_blue()
-        
 
         return np.array(state)
 
@@ -306,7 +307,9 @@ class CoachEnv(gym.Env):
             state = self._receive_state()
             reward += self.compute_rewards()
             if not self.check_agents():
+                self.broken = True
                 self.done = True
+                self.history.time = self.prev_time = 0.0
 
             if self.done:
                 break

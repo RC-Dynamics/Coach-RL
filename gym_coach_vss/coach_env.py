@@ -56,6 +56,7 @@ class CoachEnv(gym.Env):
         self.counter_yellow = 0
         self.update_ratio = 60
         self.done = False
+        self.broken = False
         self.logger_path = logger_path
         self.yellow_name = yellow_name
         self.update_interval = update_interval
@@ -172,6 +173,7 @@ class CoachEnv(gym.Env):
         print(f'************* Against {option} *************')
 
     def reset(self):
+        self.broken = False
         is_first = not (self.fira and self.agent_yellow_process)
         self.write_log(is_first)
 
@@ -302,6 +304,7 @@ class CoachEnv(gym.Env):
             state = self._receive_state()
             reward += self.compute_rewards()
             if not self.check_agents():
+                self.broken = True
                 self.done = True
                 self.history.time = self.prev_time = 0.0
 

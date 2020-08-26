@@ -132,6 +132,7 @@ def main(load_model=False, test=False):
             done = False
             epi_steps = 0
             score = 0.0
+            episode = list()
             while not done:
                 epsilon = 0.01 + (0.99 - 0.01) * \
                     np.exp(-1. * total_steps / 30000)
@@ -139,13 +140,17 @@ def main(load_model=False, test=False):
                 a = q.sample_action(s, epsilon)
                 s_prime, r, done, info = env.step(a)
                 done_mask = 0.0 if done else 1.0
-                memory.put((s, a, r, s_prime, done_mask))
+                episode.append((s, a, r, s_prime, done_mask))
                 s = s_prime
                 score += r
                 total_steps += 1
                 epi_steps += 1
                 if done:
                     print('Reset')
+
+            if not env.broken:
+                for exp in episode:
+                    memory.put(exp)
 
             if memory.size() > batch_size and not test:
                 losses = train(q, q_target, memory, optimizer)
@@ -161,7 +166,7 @@ def main(load_model=False, test=False):
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())
 
-            if not test:
+            if not test and not env.broken:
                 goal_diff = env.goal_prev_yellow - env.goal_prev_blue
                 wandb.log({'Rewards/total': score,
                            'Loss/epsilon': epsilon,

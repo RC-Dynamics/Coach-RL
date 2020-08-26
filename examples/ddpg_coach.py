@@ -191,18 +191,22 @@ def main(load_model=False, test=False):
         actor_target = Actor(n_inputs).to(device)
         critic = Critic(n_inputs).to(device)
         critic_target = Critic(n_inputs).to(device)
+        critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
+        actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
 
         if load_model or test:
             actor_dict = torch.load('models/DDPG_ACTOR.model')
             critic_dict = torch.load('models/DDPG_CRITIC.model')
             actor.load_state_dict(actor_dict)
             critic.load_state_dict(critic_dict)
+            if not test:
+                actor_optim_dict = torch.load(f'models/DDPG_ACTOR.optim')
+                actor_optim.load_state_dict(actor_optim_dict)
+                critic_optim_dict = torch.load(f'models/DDPG_CRITIC.optim')
+                critic_optim.load_state_dict(critic_optim_dict)
 
         actor_target.load_state_dict(actor.state_dict())
         critic_target.load_state_dict(critic.state_dict())
-
-        critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
-        actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
 
         memory = ReplayBuffer()
         update_interval = 10
@@ -212,6 +216,7 @@ def main(load_model=False, test=False):
             done = False
             score = 0.0
             epi_step = 0
+            episode = list()
             while not done:  # maximum length of episode is 200 for Pendulum-v0
                 a = actor.get_action(s)
                 if not test:
@@ -219,13 +224,17 @@ def main(load_model=False, test=False):
                 action = find_nearest(act_space, a)
                 s_prime, r, done, _ = env.step(action)
                 done_mask = 0.0 if done else 1.0
-                memory.put((s, a, r, s_prime, done_mask))
+                episode.append((s, a, r, s_prime, done_mask))
                 score += r
                 s = s_prime
                 total_steps += 1
                 epi_step += 1
                 if done:
                     print('Reset')
+
+            if not env.broken:
+                for exp in episode:
+                    memory.put(exp)
 
             if memory.size() > batch_size and not test:
                 actor_losses = list()
@@ -240,8 +249,11 @@ def main(load_model=False, test=False):
                            'Loss/DDPG/Critic': np.mean(critic_losses)})
                 torch.save(critic.state_dict(), 'models/DDPG_CRITIC.model')
                 torch.save(actor.state_dict(), 'models/DDPG_ACTOR.model')
+                torch.save(actor_optim.state_dict(), 'models/DDPG_ACTOR.optim')
+                torch.save(critic_optim.state_dict(),
+                           'models/DDPG_CRITIC.optim')
 
-            if not test:
+            if not test and not env.broken:
                 goal_diff = env.goal_prev_yellow - env.goal_prev_blue
                 wandb.log({'Rewards/total': score,
                            'Rewards/goal_diff': goal_diff,

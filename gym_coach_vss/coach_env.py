@@ -23,7 +23,7 @@ w_grad_ball_potential = (0.08, 1)
 class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
-                 sw_port=8084, qtde_steps=60,
+                 sw_port=8084, steps_per_update=1, qtde_steps=60,
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
                  versus='determistic', logger_path='log.txt', yellow_name='yellow'):
@@ -39,6 +39,7 @@ class CoachEnv(gym.Env):
         self.do_render = render
         self.sim_path = sim_path
         self.history = History(qtde_steps)
+        self.steps_per_update = steps_per_update
         self.qtde_steps = qtde_steps
         self.agent_blue_process = None
         self.agent_yellow_process = None
@@ -53,7 +54,7 @@ class CoachEnv(gym.Env):
         self.num_atk_faults = 0
         self.full_atk_time = 0
         self.counter_yellow = 0
-        self.update_ratio   = 60
+        self.update_ratio_blue   = 60 * 60
         self.done = False
         self.logger_path = logger_path
         self.yellow_name = yellow_name
@@ -140,6 +141,7 @@ class CoachEnv(gym.Env):
         state = self.history.cont_states
         state = np.array(state)
         state = state[self.update_interval-1::self.update_interval]
+
         return state
 
     def write_log(self, is_first=False):                
@@ -291,7 +293,7 @@ class CoachEnv(gym.Env):
 
     def step(self, action):
         self.counter_yellow += 1
-        if self.counter_yellow % self.update_ratio == 0:
+        if self.counter_yellow % self.update_ratio_blue == 0:
             self.change_random_blue()
             self.counter_yellow = 0
 
@@ -299,7 +301,8 @@ class CoachEnv(gym.Env):
         reward = 0
         out_str = struct.pack('i', int(action))
         self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
-        for _ in range(self.qtde_steps):
+
+        for _ in range(self.steps_per_update):
             state = self._receive_state()
             reward += self.compute_rewards()
             if not self.check_agents():
@@ -307,6 +310,7 @@ class CoachEnv(gym.Env):
 
             if self.done:
                 break
+
         return state, reward, self.done, self.history
 
     def render(self, mode='human'):

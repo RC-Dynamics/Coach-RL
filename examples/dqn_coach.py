@@ -18,8 +18,8 @@ random.seed(42)
 # Hyperparameters
 learning_rate = 0.0005
 gamma = 0.98 # 0.9
-buffer_limit = 50000
-batch_size = 32
+buffer_limit = 500000 # 5000000++++++
+batch_size = 64
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 

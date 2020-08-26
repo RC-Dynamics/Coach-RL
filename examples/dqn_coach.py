@@ -17,7 +17,7 @@ from gym_coach_vss import CoachEnv
 random.seed(42)
 # Hyperparameters
 learning_rate = 0.0005
-gamma = 0.98
+gamma = 0.98 # 0.9
 buffer_limit = 50000
 batch_size = 32
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -107,7 +107,7 @@ def main(load_model=False, test=False):
     try:
         if not test:
             wandb.init(name="CoachRL-DQN", project="CoachRL")
-        env = gym.make('CoachVss-v0')
+        env = gym.make('CoachVss-v0', render=True)
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q = Qnet(n_inputs, env.action_space.n).to(device)
@@ -116,14 +116,15 @@ def main(load_model=False, test=False):
         memory = ReplayBuffer()
 
         if load_model or test:
-            q_dict = torch.load('models/DQN.model')
+            #torch.load('my_file.pt', map_location=lambda storage, location: 'cpu')
+            q_dict = torch.load('models/DQN_best.model', map_location=lambda storage, loc: storage)
             q.load_state_dict(q_dict)
             q_target.load_state_dict(q_dict)
 
         update_interval = 10
         optimizer = optim.Adam(q.parameters(), lr=learning_rate)
         total_steps = 0
-        for n_epi in range(1000):
+        for n_epi in range(2000):
             s = env.reset()
             done = False
             epi_steps = 0
@@ -147,7 +148,11 @@ def main(load_model=False, test=False):
                 losses = train(q, q_target, memory, optimizer)
                 wandb.log({'Loss/DQN': np.mean(losses)},
                           step=total_steps, commit=False)
-                torch.save(q.state_dict(), 'models/DQN.model')
+                torch.save(q.state_dict(), 'models/DQN_best.model')
+
+            if n_epi % 100 ==0:
+                torch.save(q.state_dict(), f'models/DQN_{n_epi:06d}.model')
+
 
             if n_epi % update_interval == 0 and n_epi > 0 and not test:
                 q_target.load_state_dict(q.state_dict())

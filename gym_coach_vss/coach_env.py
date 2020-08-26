@@ -29,6 +29,7 @@ class CoachEnv(gym.Env):
                  versus='determistic', logger_path='log.txt', yellow_name='yellow'):
 
         super(CoachEnv, self).__init__()
+        np.random.seed(2020)
         self.addr = addr
         self.sw_port = sw_port
         self.fira_port = fira_port
@@ -51,6 +52,8 @@ class CoachEnv(gym.Env):
         self.num_penalties = 0
         self.num_atk_faults = 0
         self.full_atk_time = 0
+        self.counter_yellow = 0
+        self.update_ratio   = 60
         self.done = False
         self.logger_path = logger_path
         self.yellow_name = yellow_name
@@ -151,6 +154,23 @@ class CoachEnv(gym.Env):
                 log.write(f"{self.goal_prev_yellow}, {self.goal_prev_blue}, {self.check_agents()}\n")
                 
                 
+    def change_random_blue(self):
+        if self.versus == 'determistic':
+            options = [0, 18, 21]
+            option = int(random.choice(options))
+            out_str = struct.pack('i', option)
+
+            self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
+            if option == 0:
+                option = 'AAA'
+            elif option == 18:
+                option = 'GAA'
+            else:
+                option = 'GZA'
+                
+        else:
+            option = self.versus
+        print(f'************* Against {option} *************')
 
     def reset(self):
         is_first = not (self.fira and self.agent_yellow_process)
@@ -167,27 +187,8 @@ class CoachEnv(gym.Env):
         self.num_penalties = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
+        self.change_random_blue()
         
-        if self.versus == 'determistic':
-            options = [18, 21]
-            if self.full_atk_time % 10 == 0:
-                option = 0
-            else:
-                option = int(random.choice(options))
-            self.full_atk_time += 1
-            option = 18
-            out_str = struct.pack('i', option)
-            self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
-            if option == 0:
-                option = 'AAA'
-            elif option == 18:
-                option = 'GAA'
-            else:
-                option = 'GZA'
-                
-        else:
-            option = self.versus
-        print(f'************* Against {option} *************')
 
         return np.array(state)
 
@@ -289,6 +290,11 @@ class CoachEnv(gym.Env):
         return reward
 
     def step(self, action):
+        self.counter_yellow += 1
+        if self.counter_yellow % self.update_ratio == 0:
+            self.change_random_blue()
+            self.counter_yellow = 0
+
         self.done = False
         reward = 0
         out_str = struct.pack('i', int(action))

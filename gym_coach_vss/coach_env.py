@@ -27,7 +27,7 @@ class CoachEnv(gym.Env):
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
                  versus='determistic', logger_path='log.txt',
-                 yellow_name='yellow'):
+                 yellow_name='yellow', use_global_input=False):
 
         super(CoachEnv, self).__init__()
         np.random.seed(2020)
@@ -39,7 +39,8 @@ class CoachEnv(gym.Env):
         self.fast_mode = fast_mode
         self.do_render = render
         self.sim_path = sim_path
-        self.history = History(history_size)
+        self.use_global_input = use_global_input
+        self.history = History(history_size, store_global=use_global_input)
         self.history_size = history_size
         self.qtde_steps = qtde_steps
         self.agent_blue_process = None
@@ -63,7 +64,7 @@ class CoachEnv(gym.Env):
         self.update_interval = update_interval
         self.window_size = (history_size//update_interval)
         self.observation_space = Box(low=-1.0, high=1.0,
-                                     shape=(self.window_size, 30),
+                                     shape=(self.window_size, 30 + (use_global_input*4)),
                                      dtype=np.float32)
         if self.is_discrete:
             self.action_space = Discrete(27)
@@ -188,7 +189,7 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.num_atk_faults = 0
         self.num_penalties = 0
-        self.history = History(self.history_size)
+        self.history = History(self.history_size, store_global=self.use_global_input)
         state = self._receive_state(reset=True)
         self.change_random_blue()
 
@@ -277,7 +278,7 @@ class CoachEnv(gym.Env):
             print('********************GOAL BLUE*********************')
             self.goal_prev_blue = self.history.data.goals_blue
             print(
-                f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
+                f'Yellow {self.goal_prev_yellow} vs {self.goal_prev_blue} Blue'
             )
             reward += diff_goal_blue*100.0
 
@@ -285,7 +286,7 @@ class CoachEnv(gym.Env):
             print('********************GOAL YELLOW*******************')
             self.goal_prev_yellow = self.history.data.goals_yellow
             print(
-                f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
+                f'Yellow {self.goal_prev_yellow} vs {self.goal_prev_blue} Blue'
             )
             reward += diff_goal_yellow*100.0
 

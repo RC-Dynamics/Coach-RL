@@ -5,10 +5,9 @@ import numpy as np
 
 class Stats:
 
-    def __init__(self, data, n_player_per_team=3, control_radius=0.08):
+    def __init__(self, n_player_per_team=3, control_radius=0.08, field_width=1.3, field_length=1.5):
         # width: 1.3, length: 1.5, goal_width: 0.4, goal_depth: 0.1
-        field_width = data.field.width
-        field_length = data.field.length
+
         self.goal = np.array([field_length/2, field_width/2])
         self.control_radius = control_radius
 
@@ -33,18 +32,13 @@ class Stats:
 
         ddb_score = np.sum(sbd[:self.n_player_per_team]) - \
             np.sum(sbd[self.n_player_per_team:])
-
+        
         return ddb_score
 
     def get_ball_dist_to_goal(self, data):
         ball = data.frame.ball
         ball = np.array([ball.x, ball.y])
         return np.linalg.norm(ball - self.goal)
-
-    def get_param(self, history):
-        phi_t = self.get_phi(history)
-        c_t = self.get_control(history)
-        return phi_t, c_t
 
     def get_control(self, history):
         cm, co = 0, 0
@@ -87,9 +81,17 @@ class Stats:
             return int(ball.x >= self.court_right_x)
         return int(ball.x <= self.court_left_x)
 
+    def get_param(self, history, data):
+        phi_t = self.get_phi(history)
+        c_t = self.get_control(history)
+        b_dist = self.get_ball_dist_to_goal(data)
+        ddb  = self.get_DDB(data)
+
+        return [phi_t, c_t, b_dist, ddb]
+
 
 class History:
-    def __init__(self, MAX, num_robotsBlue=3, num_robotsYellow=3):
+    def __init__(self, MAX, num_robotsBlue=3, num_robotsYellow=3, store_global=False):
         self.MAX = MAX
         self.balls = collections.deque(maxlen=MAX)
         self.listOfBlueRobots = [
@@ -103,8 +105,9 @@ class History:
         self.num_insertions = 0
         self.time = 0
         self.data = None
-        self.stats = None
-
+        self.store_global = store_global
+        self.stats = Stats()
+        
     def start_lists(self, data):
         for _ in range(self.MAX):
             self.balls.append(data.frame.ball)
@@ -118,13 +121,16 @@ class History:
                                robot.vy, robot.orientation]
                 self.listOfYellowRobots[robot.robot_id].append(robot)
             cont_state += [0]
+            
+            if self.store_global:
+                cont_state += self.stats.get_param(self, data)
             self.cont_states.append(cont_state)
 
     def update(self, data, reset):
         self.data = data
         if reset:
             self.start_lists(self.data)
-        self.stats = Stats(self.data)
+        
         cont_state = []
         cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
         self.balls.append(self.data.frame.ball)
@@ -137,6 +143,9 @@ class History:
             self.listOfYellowRobots[robot.robot_id].append(robot)
         cont_state += [(data.goals_yellow - data.goals_blue) / 10]
 
+        if self.store_global:
+            cont_state += self.stats.get_param(self, data)
+            
         self.cont_states.append(cont_state)
         self.time = self.data.step
 

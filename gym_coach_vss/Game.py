@@ -94,7 +94,8 @@ class History:
             collections.deque(maxlen=MAX)] * num_robotsBlue
         self.listOfYellowRobots = [
             collections.deque(maxlen=MAX)] * num_robotsYellow
-        self.cont_states = collections.deque(maxlen=MAX)
+        self.cont_states_blue = collections.deque(maxlen=MAX)
+        self.cont_states_yellow = collections.deque(maxlen=MAX)
         self.disc_states = collections.deque(maxlen=MAX)
         self.num_robotsBlue = num_robotsBlue
         self.num_robotsYellow = num_robotsYellow
@@ -103,39 +104,69 @@ class History:
         self.data = None
         self.stats = None
 
+    def get_blue_robots(self):
+        yellow_cont, blue_cont = list(), list()
+        for robot in self.data.frame.robots_blue:
+            yellow_cont += [robot.x, robot.y, robot.vx, robot.vy]
+            blue_cont += [robot.x, robot.y, robot.vx,
+                          robot.vy, robot.orientation]
+            self.listOfBlueRobots[robot.robot_id].append(robot)
+        return yellow_cont, blue_cont
+
+    def get_yellow_robots(self):
+        yellow_cont, blue_cont = list(), list()
+        for robot in self.data.frame.robots_blue:
+            yellow_cont += [robot.x, robot.y,
+                            robot.vx, robot.vy, robot.orientation]
+            blue_cont += [robot.x, robot.y, robot.vx, robot.vy]
+            self.listOfYellowRobots[robot.robot_id].append(robot)
+        return yellow_cont, blue_cont
+
     def start_lists(self, data):
         for _ in range(self.MAX):
             self.balls.append(data.frame.ball)
-            cont_state = []
-            cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
-            for robot in self.data.frame.robots_blue:
-                cont_state += [robot.x, robot.y, robot.vx, robot.vy]
-                self.listOfBlueRobots[robot.robot_id].append(robot)
-            for robot in self.data.frame.robots_yellow:
-                cont_state += [robot.x, robot.y, robot.vx,
-                               robot.vy, robot.orientation]
-                self.listOfYellowRobots[robot.robot_id].append(robot)
-            cont_state += [0]
-            self.cont_states.append(cont_state)
+            cont_state_yellow = []
+            cont_state_blue = []
+            cont_state_yellow += [self.data.frame.ball.x,
+                                  self.data.frame.ball.y]
+            cont_state_blue += [self.data.frame.ball.x,
+                                self.data.frame.ball.y]
+            yc1, bc1 = self.get_blue_robots()
+            yc2, bc2 = self.get_yellow_robots()
+            cont_state_yellow += yc1
+            cont_state_yellow += yc2
+            cont_state_blue += bc2
+            cont_state_blue += bc1
+
+            cont_state_yellow += [0]
+            cont_state_blue += [0]
+            self.cont_states_yellow.append(cont_state_yellow)
+            self.cont_states_blue.append(cont_state_blue)
 
     def update(self, data, reset):
         self.data = data
         if reset:
             self.start_lists(self.data)
+            return
         self.stats = Stats(self.data)
-        cont_state = []
-        cont_state += [self.data.frame.ball.x, self.data.frame.ball.y]
-        self.balls.append(self.data.frame.ball)
-        for robot in self.data.frame.robots_blue:
-            cont_state += [robot.x, robot.y, robot.vx, robot.vy]
-            self.listOfBlueRobots[robot.robot_id].append(robot)
-        for robot in self.data.frame.robots_yellow:
-            cont_state += [robot.x, robot.y, robot.vx,
-                           robot.vy, robot.orientation]
-            self.listOfYellowRobots[robot.robot_id].append(robot)
-        cont_state += [(data.goals_yellow - data.goals_blue) / 10]
+        cont_state_yellow = []
+        cont_state_blue = []
+        cont_state_yellow += [self.data.frame.ball.x,
+                              self.data.frame.ball.y]
+        cont_state_blue += [self.data.frame.ball.x,
+                            self.data.frame.ball.y]
+        yc1, bc1 = self.get_blue_robots()
+        yc2, bc2 = self.get_yellow_robots()
+        cont_state_yellow += yc1
+        cont_state_yellow += yc2
+        cont_state_blue += bc2
+        cont_state_blue += bc1
 
-        self.cont_states.append(cont_state)
+        cont_state_yellow += [(data.goals_yellow - data.goals_blue) / 10]
+        cont_state_blue += [(data.goals_blue - data.goals_yellow) / 10]
+
+        self.cont_states_yellow.append(cont_state_yellow)
+        self.cont_states_blue.append(cont_state_blue)
         self.time = self.data.step
 
         self.num_insertions += 1

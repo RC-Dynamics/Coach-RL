@@ -27,7 +27,7 @@ class CoachEnv(gym.Env):
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
                  versus='determistic', logger_path='log.txt',
-                 yellow_name='yellow'):
+                 yellow_name='yellow', self_play=False):
 
         super(CoachEnv, self).__init__()
         np.random.seed(2020)
@@ -36,6 +36,7 @@ class CoachEnv(gym.Env):
         self.fira_port = fira_port
         self.fira = None
         self.sw_conn = None
+        self.sw_conn_blue = None
         self.fast_mode = fast_mode
         self.do_render = render
         self.sim_path = sim_path
@@ -55,13 +56,14 @@ class CoachEnv(gym.Env):
         self.num_atk_faults = 0
         self.full_atk_time = 0
         self.counter_yellow = 0
-        self.update_ratio_blue   = 60 * 60
+        self.update_ratio_blue = 60 * 60
         self.done = False
         self.broken = False
         self.logger_path = logger_path
         self.yellow_name = yellow_name
         self.update_interval = update_interval
         self.window_size = (qtde_steps//update_interval)
+        self.self_play = self_play
         self.observation_space = Box(low=-1.0, high=1.0,
                                      shape=(self.window_size, 30),
                                      dtype=np.float32)
@@ -85,6 +87,9 @@ class CoachEnv(gym.Env):
         elif self.versus == 'threezones':
             command_blue = [BIN_PATH + 'VSSL_blue_threezones']
             command_blue.append('-H')
+        elif self.versus == 'self':
+            command_blue = [BIN_PATH + 'VSSL_blue_sp']
+            command_blue.append('-H')
         else:
             raise ValueError(f'No team with {self.versus} type')
         command_yellow = [BIN_PATH + 'VSSL_yellow']
@@ -97,7 +102,17 @@ class CoachEnv(gym.Env):
         self.sw_conn.setsockopt(
             socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
         self.sw_conn.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
-        self.sw_conn.bind(('0.0.0.0', 8084))
+        self.sw_conn.bind(('0.0.0.0', self.sw_port))
+        if self.self_play:
+            self.sw_conn_blue = socket.socket(
+                socket.AF_INET, socket.SOCK_DGRAM)
+            self.sw_conn_blue.setsockopt(
+                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sw_conn_blue.setsockopt(
+                socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
+            self.sw_conn_blue.setsockopt(
+                socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+            self.sw_conn_blue.bind(('0.0.0.0', self.sw_port+10))
 
     def check_agents(self):
         r_blue = self.agent_blue_process.poll() is None
@@ -117,6 +132,8 @@ class CoachEnv(gym.Env):
         self.agent_yellow_process.wait()
         self.sw_conn.close()
         self.sw_conn = None
+        self.sw_conn_blue.close()
+        self.sw_conn_blue = None
         self.agent_yellow_process = None
         self.agent_blue_process = None
 
@@ -139,10 +156,23 @@ class CoachEnv(gym.Env):
     def _receive_state(self, reset=False):
         data = self.fira.receive()
         self.history.update(data, reset=reset)
-        state = self.history.cont_states
-        state = np.array(state)
-        state = state[self.update_interval-1::self.update_interval]
+        if not self.self_play:
+            state = self.history.cont_states_yellow
+            state = np.array(state)
+            state = state[self.update_interval-1::self.update_interval]
 
+        else:
+            state_yellow = self.history.cont_states_yellow
+            state_yellow = np.array(state_yellow)
+            state_yellow = state_yellow[self.update_interval -
+                                        1::self.update_interval]
+
+            state_blue = self.history.cont_states_blue
+            state_blue = np.array(state_blue)
+            state_blue = state_blue[self.update_interval -
+                                    1::self.update_interval]
+
+            state = {'yellow': state_yellow, 'blue': state_blue}
         return state
 
     def write_log(self, is_first=False):
@@ -191,9 +221,12 @@ class CoachEnv(gym.Env):
         self.num_penalties = 0
         self.history = History(self.qtde_steps)
         state = self._receive_state(reset=True)
-        self.change_random_blue()
-
-        return np.array(state)
+        if not self.self_play:
+            self.change_random_blue()
+            return np.array(state)
+        else:
+            state_yellow, state_blue = state
+            return np.array(state_yellow), np.array(state_blue)
 
     def ball_potential(self, step=-1):
         dx_d = 0 - self.history.balls[step].x  # distance to defence
@@ -264,13 +297,14 @@ class CoachEnv(gym.Env):
             grad_ball_potential = 0.0
 
         reward = 0.0
+        reward_blue = 0
 
         if self.is_penalty():
             self.num_penalties += 1
             reward -= 35
-        if self.is_atk_fault():
-            self.num_atk_faults += 1
-            reward -= 10
+        # if self.is_atk_fault():
+        #     self.num_atk_faults += 1
+        #     reward -= 10
 
         if diff_goal_blue < 0.0:
             print('********************GOAL BLUE*********************')
@@ -279,6 +313,7 @@ class CoachEnv(gym.Env):
                 f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
             )
             reward += diff_goal_blue*100.0
+            reward_blue += diff_goal_blue*-100
 
         if diff_goal_yellow > 0.0:
             print('********************GOAL YELLOW*******************')
@@ -287,24 +322,41 @@ class CoachEnv(gym.Env):
                 f'Blue {self.goal_prev_blue} vs {self.goal_prev_yellow} Yellow'
             )
             reward += diff_goal_yellow*100.0
+            reward_blue += diff_goal_yellow*-100
 
         reward += grad_ball_potential * w_grad_ball_potential[0]
+        reward_blue += grad_ball_potential * -w_grad_ball_potential[0]
 
+        if self.self_play:
+            reward = {'yellow': reward, 'blue': reward_blue}
         return reward
 
     def step(self, action):
-        self.counter_yellow += 1
-        if self.counter_yellow % self.update_ratio_blue == 0:
-            self.change_random_blue()
-            self.counter_yellow = 0
+        if not self.self_play:
+            self.counter_yellow += 1
+            if self.counter_yellow % self.update_ratio_blue == 0:
+                self.change_random_blue()
+                self.counter_yellow = 0
 
         self.done = False
-        reward = 0
-        out_str = struct.pack('i', int(action))
-        self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
+        reward = 0 if not self.self_play else {'yellow': 0, 'blue': 0}
+
+        if self.self_play:
+            out_str = struct.pack('i', int(action['yellow']))
+            self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
+            out_str = struct.pack('i', int(action['blue']))
+            self.sw_conn_blue.sendto(out_str, ('0.0.0.0', 4097))
+        else:
+            out_str = struct.pack('i', int(action))
+            self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
 
         for _ in range(self.steps_per_update):
             state = self._receive_state()
+            if self.self_play:
+                rew = self.compute_rewards()
+                reward['yellow'] += rew['yellow']
+                reward['blue'] += rew['blue']
+
             reward += self.compute_rewards()
             if not self.check_agents():
                 self.broken = True

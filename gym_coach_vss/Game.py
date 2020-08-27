@@ -57,7 +57,8 @@ class Stats:
             cm += sum([self.is_controling(blue[i], ball[i]) for blue in blues])
             co += sum([self.is_controling(yellow[i], ball[i])
                        for yellow in yellows])
-        c_t = cm / (cm + co + self.eps)
+        #c_t = cm / (cm + co + self.eps) # original 
+        c_t = (cm - co) / len(ball)
 
         return c_t
 
@@ -70,7 +71,8 @@ class Stats:
             bm += self.ball_in_area(ball=ball_state, use_right_goal=True)
             bo += self.ball_in_area(ball=ball_state, use_right_goal=False)
 
-        phi_t = bm / (bm + bo + self.eps)
+        #phi_t = bm / (bm + bo + self.eps) # original
+        phi_t = (bm-bo) / len(ball)
 
         return phi_t
 

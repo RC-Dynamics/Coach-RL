@@ -23,7 +23,7 @@ w_grad_ball_potential = (0.08, 1)
 class CoachEnv(gym.Env):
 
     def __init__(self, addr='224.5.23.2', fira_port=10020,
-                 sw_port=8084, qtde_steps=60,
+                 sw_port=8084, qtde_steps=60, history_size=60,
                  update_interval=15, fast_mode=True,
                  render=False, sim_path=None, is_discrete=True,
                  versus='determistic', logger_path='log.txt',
@@ -39,7 +39,8 @@ class CoachEnv(gym.Env):
         self.fast_mode = fast_mode
         self.do_render = render
         self.sim_path = sim_path
-        self.history = History(qtde_steps)
+        self.history = History(history_size)
+        self.history_size = history_size
         self.qtde_steps = qtde_steps
         self.agent_blue_process = None
         self.agent_yellow_process = None
@@ -60,7 +61,7 @@ class CoachEnv(gym.Env):
         self.logger_path = logger_path
         self.yellow_name = yellow_name
         self.update_interval = update_interval
-        self.window_size = (qtde_steps//update_interval)
+        self.window_size = (history_size//update_interval)
         self.observation_space = Box(low=-1.0, high=1.0,
                                      shape=(self.window_size, 30),
                                      dtype=np.float32)
@@ -187,7 +188,7 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.num_atk_faults = 0
         self.num_penalties = 0
-        self.history = History(self.qtde_steps)
+        self.history = History(self.history_size)
         state = self._receive_state(reset=True)
         self.change_random_blue()
 

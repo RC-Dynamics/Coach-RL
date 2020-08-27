@@ -17,7 +17,7 @@ from gym_coach_vss import CoachEnv
 random.seed(42)
 # Hyperparameters
 learning_rate = 0.0005
-gamma = 0.98  # 0.9
+gamma = 0.94  # 0.9
 buffer_limit = 500000
 batch_size = 32
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

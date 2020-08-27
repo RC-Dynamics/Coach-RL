@@ -36,7 +36,6 @@ class CoachEnv(gym.Env):
         self.fira_port = fira_port
         self.fira = None
         self.sw_conn = None
-        self.sw_conn_blue = None
         self.fast_mode = fast_mode
         self.do_render = render
         self.sim_path = sim_path
@@ -103,16 +102,6 @@ class CoachEnv(gym.Env):
             socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
         self.sw_conn.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
         self.sw_conn.bind(('0.0.0.0', self.sw_port))
-        if self.self_play:
-            self.sw_conn_blue = socket.socket(
-                socket.AF_INET, socket.SOCK_DGRAM)
-            self.sw_conn_blue.setsockopt(
-                socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.sw_conn_blue.setsockopt(
-                socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 128)
-            self.sw_conn_blue.setsockopt(
-                socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
-            self.sw_conn_blue.bind(('0.0.0.0', self.sw_port+10))
 
     def check_agents(self):
         r_blue = self.agent_blue_process.poll() is None
@@ -132,8 +121,6 @@ class CoachEnv(gym.Env):
         self.agent_yellow_process.wait()
         self.sw_conn.close()
         self.sw_conn = None
-        self.sw_conn_blue.close()
-        self.sw_conn_blue = None
         self.agent_yellow_process = None
         self.agent_blue_process = None
 
@@ -225,8 +212,9 @@ class CoachEnv(gym.Env):
             self.change_random_blue()
             return np.array(state)
         else:
-            state_yellow, state_blue = state
-            return np.array(state_yellow), np.array(state_blue)
+            state['yellow'] = np.array(state['yellow'])
+            state['blue'] = np.array(state['blue'])
+            return state
 
     def ball_potential(self, step=-1):
         dx_d = 0 - self.history.balls[step].x  # distance to defence
@@ -345,7 +333,7 @@ class CoachEnv(gym.Env):
             out_str = struct.pack('i', int(action['yellow']))
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
             out_str = struct.pack('i', int(action['blue']))
-            self.sw_conn_blue.sendto(out_str, ('0.0.0.0', 4097))
+            self.sw_conn.sendto(out_str, ('0.0.0.0', 4097))
         else:
             out_str = struct.pack('i', int(action))
             self.sw_conn.sendto(out_str, ('0.0.0.0', 4098))
@@ -356,8 +344,8 @@ class CoachEnv(gym.Env):
                 rew = self.compute_rewards()
                 reward['yellow'] += rew['yellow']
                 reward['blue'] += rew['blue']
-
-            reward += self.compute_rewards()
+            else:
+                reward += self.compute_rewards()
             if not self.check_agents():
                 self.broken = True
                 self.done = True

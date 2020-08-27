@@ -145,7 +145,7 @@ def main(load_model=False, test=False):
                     episode.append((s[team], a[team],
                                     r[team], s_prime[team], done_mask))
                 s = s_prime
-                score += r
+                score += max(r['yellow'], r['blue'])
                 total_steps += 1
                 epi_steps += 1
                 if done:
@@ -170,10 +170,8 @@ def main(load_model=False, test=False):
                 q_target.load_state_dict(q.state_dict())
 
             if not test and not env.broken:
-                goal_diff = env.goal_prev_yellow - env.goal_prev_blue
                 wandb.log({'Rewards/total': score,
                            'Loss/epsilon': epsilon,
-                           'Rewards/goal_diff': goal_diff,
                            'Rewards/num_penalties': env.num_penalties,
                            'Rewards/num_atk_faults': env.num_atk_faults
                            }, step=total_steps)

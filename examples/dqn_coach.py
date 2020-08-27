@@ -103,11 +103,11 @@ def train(q, q_target, memory, optimizer):
     return losses
 
 
-def main(load_model=False, test=False):
+def main(load_model=False, test=False, use_render=False):
     try:
         if not test:
             wandb.init(name="CoachRL-DQN", project="CoachRL")
-        env = gym.make('CoachVss-v0', render=False)
+        env = gym.make('CoachVss-v0', render=use_render)
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
         q = Qnet(n_inputs, env.action_space.n).to(device)
@@ -187,8 +187,12 @@ if __name__ == '__main__':
     PARSER.add_argument('--load', default=False,
                         action='store_true',
                         help="Load models from examples/models/")
+    PARSER.add_argument('-r','--render', default=False,
+                        action='store_true',
+                        help="Use render")
+
     ARGS = PARSER.parse_args()
     if not os.path.exists('./models'):
         os.makedirs('models')
 
-    main(load_model=ARGS.load, test=ARGS.test)
+    main(load_model=ARGS.load, test=ARGS.test, use_render=ARGS.render)

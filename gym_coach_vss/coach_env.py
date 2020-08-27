@@ -195,9 +195,11 @@ class CoachEnv(gym.Env):
         return np.array(state)
 
     def ball_potential(self, step=-1):
-        dx_d = 0 - self.history.balls[step].x  # distance to defence
-        dx_a = 170.0 - self.history.balls[step].x  # distance to attack
-        dy = 65.0 - self.history.balls[step].y
+        aux_x = (self.history.balls[step].x - 0.75)*100
+        aux_y = (self.history.balls[step].y - 0.65)*100
+        dx_d = 170.0 - aux_x  # distance to defence
+        dx_a = 0.0 - aux_x  # distance to attack
+        dy = 65.0 - aux_y
         potential = ((-math.sqrt(dx_a ** 2 + 2 * dy ** 2)
                       + math.sqrt(dx_d ** 2 + 2 * dy ** 2)) / 170 - 1) / 2
 

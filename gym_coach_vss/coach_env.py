@@ -67,7 +67,7 @@ class CoachEnv(gym.Env):
                                      shape=(self.window_size, 30 + (use_global_input*4)),
                                      dtype=np.float32)
         if self.is_discrete:
-            self.action_space = Discrete(27)
+            self.action_space = Discrete(9)
         else:
             self.action_space = Box(low=-1.0, high=1.0,
                                     shape=(1,),
@@ -295,10 +295,6 @@ class CoachEnv(gym.Env):
         return reward
 
     def step(self, action):
-        self.counter_yellow += 1
-        if self.counter_yellow % self.update_ratio == 0:
-            self.change_random_blue()
-            self.counter_yellow = 0
 
         self.done = False
         reward = 0

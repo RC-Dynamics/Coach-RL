@@ -57,7 +57,7 @@ class Critic(nn.Module):
     def __init__(self, num_inputs):
         super(Critic, self).__init__()
 
-        self.linear1 = nn.Linear(num_inputs + 1, 128)
+        self.linear1 = nn.Linear(num_inputs + 3, 128)
         self.linear2 = nn.Linear(128, 128)
         self.linear3 = nn.Linear(128, 1)
 
@@ -75,7 +75,7 @@ class Actor(nn.Module):
         self.num_input = num_inputs
         self.linear1 = nn.Linear(num_inputs, 128)
         self.linear2 = nn.Linear(128, 128)
-        self.linear3 = nn.Linear(128, 1)
+        self.linear3 = nn.Linear(128, 3)
 
     def forward(self, state):
         x = F.relu(self.linear1(state))
@@ -87,7 +87,7 @@ class Actor(nn.Module):
         state = torch.from_numpy(state).float().to(device)
         state = state.view(1, self.num_input)
         action = self.forward(state)
-        return action.detach().cpu().numpy()[0, 0]
+        return action.detach().cpu().numpy()
 
 
 class OUNoise(object):
@@ -133,7 +133,7 @@ def train(critic, critic_target, actor, actor_target,
 
     state_batch = state_batch.to(device)
     next_state_batch = next_state_batch.to(device)
-    action_batch = action_batch.to(device)
+    action_batch = action_batch.to(device).squeeze()
     reward_batch = reward_batch.to(device)
     done_batch = done_batch.to(device)
 
@@ -176,6 +176,22 @@ def find_nearest(array, value):
         return idx
 
 
+def mapped_action(action):
+    action_list = ["000", "001", "002", "010", "011", "012", "020", "021",
+                   "022", "100", "101", "102", "110", "111", "112", "120",
+                   "121", "122", "200", "201", "202", "210", "211", "212",
+                   "220", "221", "222"]
+    act = ''
+    for x in action:
+        if x < -0.34:
+            act += '0'
+        elif x < 0.34:
+            act += '1'
+        else:
+            act += '2'
+    return action_list.index(act)
+
+
 def main(load_model=False, test=False):
     try:
         if not test:
@@ -185,7 +201,6 @@ def main(load_model=False, test=False):
 
         n_inputs = env.observation_space.shape[0] * \
             env.observation_space.shape[1]
-        act_space = np.linspace(-1, 1, 27)
 
         actor = Actor(n_inputs).to(device)
         actor_target = Actor(n_inputs).to(device)
@@ -211,7 +226,7 @@ def main(load_model=False, test=False):
         memory = ReplayBuffer()
         update_interval = 10
         total_steps = 0
-        for n_epi in range(10000):
+        for n_epi in range(500):
             s = env.reset()
             done = False
             score = 0.0
@@ -221,37 +236,37 @@ def main(load_model=False, test=False):
                 a = actor.get_action(s)
                 if not test:
                     a = ou_noise.get_action(a, epi_step)[0]
-                action = find_nearest(act_space, a)
+                action = mapped_action(a)
                 s_prime, r, done, _ = env.step(action)
                 done_mask = 0.0 if done else 1.0
-                episode.append((s, a, r, s_prime, done_mask))
+                # episode.append((s, a, r, s_prime, done_mask))
+                memory.put((s, a, r, s_prime, done_mask))
                 score += r
                 s = s_prime
                 total_steps += 1
                 epi_step += 1
                 if done:
                     print('Reset')
-
-            if not env.broken:
-                for exp in episode:
-                    memory.put(exp)
-
-            if memory.size() > batch_size and not test:
-                actor_losses = list()
-                critic_losses = list()
-                for _ in range(10):
+                if memory.size() > batch_size and not test:
                     act_loss, critic_loss = train(critic, critic_target, actor,
                                                   actor_target, critic_optim,
                                                   actor_optim, memory)
-                    actor_losses.append(act_loss)
-                    critic_losses.append(critic_loss)
-                wandb.log({'Loss/DDPG/Actor': np.mean(actor_losses),
-                           'Loss/DDPG/Critic': np.mean(critic_losses)})
-                torch.save(critic.state_dict(), 'models/DDPG_CRITIC.model')
-                torch.save(actor.state_dict(), 'models/DDPG_ACTOR.model')
-                torch.save(actor_optim.state_dict(), 'models/DDPG_ACTOR.optim')
-                torch.save(critic_optim.state_dict(),
-                           'models/DDPG_CRITIC.optim')
+                    wandb.log({'Loss/DDPG/Actor': act_loss,
+                               'Loss/DDPG/Critic': critic_loss},
+                              step=total_steps)
+                    if total_steps % 1000 == 0:
+                        torch.save(critic.state_dict(),
+                                   f'models/DDPG_CRITIC_{n_epi:06d}.model')
+                        torch.save(actor.state_dict(),
+                                   f'models/DDPG_ACTOR_{n_epi:06d}.model')
+                        torch.save(actor_optim.state_dict(),
+                                   f'models/DDPG_ACTOR_{n_epi:06d}.optim')
+                        torch.save(critic_optim.state_dict(),
+                                   f'models/DDPG_CRITIC_{n_epi:06d}.optim')
+
+            # if not env.broken:
+            #     for exp in episode:
+            #         memory.put(exp)
 
             if not test and not env.broken:
                 goal_diff = env.goal_prev_yellow - env.goal_prev_blue

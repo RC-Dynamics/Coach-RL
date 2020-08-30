@@ -64,13 +64,14 @@ class CoachEnv(gym.Env):
         self.update_interval = update_interval
         self.window_size = (history_size//update_interval)
         self.observation_space = Box(low=-1.0, high=1.0,
-                                     shape=(self.window_size, 30 + (use_global_input*4)),
+                                     shape=(self.window_size, 30 +
+                                            (use_global_input*4)),
                                      dtype=np.float32)
         if self.is_discrete:
             self.action_space = Discrete(27)
         else:
             self.action_space = Box(low=-1.0, high=1.0,
-                                    shape=(1,),
+                                    shape=(3,),
                                     dtype=np.float32)
 
     def start_agents(self):
@@ -189,10 +190,10 @@ class CoachEnv(gym.Env):
         self.goal_prev_yellow = 0
         self.num_atk_faults = 0
         self.num_penalties = 0
-        self.history = History(self.history_size, store_global=self.use_global_input)
+        self.history = History(self.history_size,
+                               store_global=self.use_global_input)
         state = self._receive_state(reset=True)
         self.change_random_blue()
-
         return np.array(state)
 
     def ball_potential(self, step=-1):
@@ -295,11 +296,6 @@ class CoachEnv(gym.Env):
         return reward
 
     def step(self, action):
-        self.counter_yellow += 1
-        if self.counter_yellow % self.update_ratio == 0:
-            self.change_random_blue()
-            self.counter_yellow = 0
-
         self.done = False
         reward = 0
         out_str = struct.pack('i', int(action))

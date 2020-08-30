@@ -16,10 +16,10 @@ import wandb
 
 # Hyperparameters
 actor_lr = 0.0005
-critic_lr = 0.001
+critic_lr = 0.0003
 gamma = 0.99
 batch_size = 32
-buffer_limit = 50000
+buffer_limit = 500000
 soft_tau = 0.005  # for target network soft update
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -226,7 +226,7 @@ def main(load_model=False, test=False):
         memory = ReplayBuffer()
         update_interval = 10
         total_steps = 0
-        for n_epi in range(500):
+        for n_epi in range(30):
             s = env.reset()
             done = False
             score = 0.0
@@ -236,6 +236,8 @@ def main(load_model=False, test=False):
                 a = actor.get_action(s)
                 if not test:
                     a = ou_noise.get_action(a, epi_step)[0]
+                else:
+                    a = a[0]
                 action = mapped_action(a)
                 s_prime, r, done, _ = env.step(action)
                 done_mask = 0.0 if done else 1.0
@@ -273,7 +275,6 @@ def main(load_model=False, test=False):
                 wandb.log({'Rewards/total': score,
                            'Rewards/goal_diff': goal_diff,
                            'Rewards/num_penalties': env.num_penalties,
-                           'Rewards/num_atk_faults': env.num_atk_faults
                            }, step=total_steps)
 
         env.close()

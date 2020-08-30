@@ -321,5 +321,6 @@ class CoachEnv(gym.Env):
 
 class CoachEnvContinuous(CoachEnv):
 
-    def __init__(self):
-        super(CoachEnvContinuous, self).__init__(is_discrete=False)
+    def __init__(self, render=False):
+        super(CoachEnvContinuous, self).__init__(
+            is_discrete=False, render=render)

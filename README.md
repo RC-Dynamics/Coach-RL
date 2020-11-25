@@ -8,8 +8,7 @@ This project analyze the match situation and choose the best strategy that can b
 
 Example of learned behaviors: efficient position switching
 
-<img src="extra/holdit.gif" width="300" />
-<img src="extra/recover.gif" width="300" />
+<img src="extra/holdit.gif" width="300" /> <img src="extra/recover.gif" width="300" />
 
 
 ## Installation
